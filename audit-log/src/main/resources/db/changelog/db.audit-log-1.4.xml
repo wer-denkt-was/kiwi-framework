@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd"
+                   objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+    <changeSet id="fix_kiwi_audit_log_event_details" author="dahmen">
+        <!-- language=postgresql -->
+        <sql dbms="postgresql" splitStatements="true">
+            alter table kiwi_audit_log add column __TMP_event_details bytea;
+
+            update kiwi_audit_log
+            set __TMP_event_details = lo_get(event_details)
+            where event_details is not null;
+
+            select lo_unlink(event_details)
+            from kiwi_audit_log
+            where event_details is not null;
+
+            alter table kiwi_audit_log drop column event_details;
+            alter table kiwi_audit_log rename column __TMP_event_details to event_details;
+            alter table kiwi_audit_log alter column event_details set not null;
+        </sql>
+
+        <!-- language=mariadb -->
+        <sql dbms="mysql,mariadb" splitStatements="true">
+            alter table kiwi_audit_log
+                change event_details
+                    event_details longblob not null;
+        </sql>
+    </changeSet>
+</databaseChangeLog>

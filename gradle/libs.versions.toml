@@ -1,0 +1,35 @@
+[versions]
+kotlin = "2.2.21"
+dokka = "2.1.0"
+antlr4 = "4.13.2"
+spring-boot = "3.5.14"
+spring-dependencyManagement = "1.1.7"
+springdoc-openapi = "2.8.14"
+aws-sdk-kotlin = "1.4.125"
+git-versioning = "6.4.4"
+gradle-node = "7.1.0"
+graalvm-js = "25.0.1"
+
+[libraries]
+aws-sdk-kotlin-s3 = { group = "aws.sdk.kotlin", name = "s3", version.ref = "aws-sdk-kotlin" }
+springdoc-openapi-starter-webmvc-api = { group = "org.springdoc", name = "springdoc-openapi-starter-webmvc-api", version.ref = "springdoc-openapi" }
+springdoc-openapi-starter-webmvc-ui = { group = "org.springdoc", name = "springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc-openapi" }
+antlr4-antlr = { group = "org.antlr", name = "antlr4", version.ref = "antlr4" }
+antlr4-runtime = { group = "org.antlr", name = "antlr4-runtime", version.ref = "antlr4" }
+graalvm-js = { group = "org.graalvm.js", name = "js", version.ref = "graalvm-js" }
+graalvm-js-scriptengine = { group = "org.graalvm.js", name = "js-scriptengine", version.ref = "graalvm-js" }
+
+[bundles]
+graalvm-js = ["graalvm-js", "graalvm-js-scriptengine"]
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+kotlin-dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
+kotlin-dokkaJavadoc = { id = "org.jetbrains.dokka-javadoc", version.ref = "dokka" }
+springBoot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+springDependencies = { id = "io.spring.dependency-management", version.ref = "spring-dependencyManagement" }
+gitVersioning = { id = "me.qoomon.git-versioning", version.ref = "git-versioning" }
+gradleNode = { id = "com.github.node-gradle.node", version.ref = "gradle-node" }

@@ -1,0 +1,8 @@
+# Compiled document files
+*.pdf
+*.odt
+*.docx
+*.html
+
+# Intermediary files
+plantuml-images/

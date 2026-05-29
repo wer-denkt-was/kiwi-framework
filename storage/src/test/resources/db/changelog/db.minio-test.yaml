@@ -1,0 +1,3 @@
+databaseChangeLog:
+  - objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+  - include: { file: classpath:db/changelog/db.storage-master.xml }

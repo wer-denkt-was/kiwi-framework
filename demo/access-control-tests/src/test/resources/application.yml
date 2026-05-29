@@ -1,0 +1,21 @@
+## Configuration properties for access-control testing
+spring:
+  datasource:
+    url: jdbc:tc:mysql:8://access-control-test-db
+  jpa:
+    hibernate:
+      # Automatically create a sufficient schema for entities without migration
+      ddl-auto: create
+    properties:
+      hibernate:
+        # Use inline values (instead of parameters) to enable explain statements in statement inspector
+        use_sql_comments: true
+        criteria.value_handling_mode: inline
+        session_factory.statement_inspector: de.kiwi.demo.access.instrument.HibernateStatementCallbackInspector
+    show-sql: true
+kiwi:
+  jwt:
+    enabled: false
+logging:
+  level:
+    org.hibernate.tool.schema.internal: error

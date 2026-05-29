@@ -1,0 +1,22 @@
+package de.kiwi.framework.infrastructure.bus.command
+
+import de.kiwi.api.application.command.CommandBus
+import de.kiwi.api.application.service.TransactionService
+import de.kiwi.api.domain.Command
+import de.kiwi.api.domain.DomainResult
+import de.kiwi.api.domain.UserDescriptor
+
+class TransactionalCommandBus(
+    private val transactionService: TransactionService,
+    private val delegate: CommandBus.Configurable,
+) : CommandBus.Configurable by delegate {
+
+    override fun <C : Command<R>, R> submit(command: C, user: UserDescriptor): DomainResult<R> {
+        val execute = { delegate.submit(command, user) }
+        return when {
+            command.transactional && command.readOnly -> transactionService.read { execute() }
+            command.transactional -> transactionService.write { execute() }
+            else -> execute()
+        }
+    }
+}

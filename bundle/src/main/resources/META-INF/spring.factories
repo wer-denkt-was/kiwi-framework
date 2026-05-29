@@ -1,0 +1,2 @@
+de.kiwi.api.application.repository.JpaAccessControlExecutor=\
+  de.kiwi.framework.infrastructure.spring.SpringJpaAccessControlExecutor

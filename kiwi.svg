@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" viewBox="16 16 80 80">
+    <style>
+        #kiwi {
+        filter: drop-shadow(0 0 2px white);
+        }
+    </style>
+    <g id="kiwi">
+        <g transform="translate(42,67)">
+            <polyline points="0,0 0,15 10,15" fill="none" stroke="black" stroke-width="1.5" stroke-linejoin="round"/>
+            <polyline points="10,0 18,18 29,18" fill="none" stroke="black" stroke-width="1.5" stroke-linejoin="round"/>
+        </g>
+        <g transform="translate(23,40)">
+            <polygon points="0,10 10,0 10,20" stroke-width="1.5" stroke="black" fill="white"/>
+            <circle cx="27" cy="10" r="20" stroke-width="1.5" stroke="black" fill="white"/>
+        </g>
+        <g transform="translate(5,1)">
+            <circle cx="60" cy="40" r="12" stroke-width="1.5" stroke="black" fill="white"/>
+            <ellipse cx="61" cy="38" rx="2" ry="3" fill="black"/>
+            <!--<ellipse cx="61.5" cy="37.5" rx=".5" ry="1" fill="white"/>-->
+            <g transform="translate(66,40)">
+                <polygon points="0,1 20,5 -2,5" stroke-width="1.5" stroke="black" fill="white"/>
+            </g>
+        </g>
+    </g>
+</svg>

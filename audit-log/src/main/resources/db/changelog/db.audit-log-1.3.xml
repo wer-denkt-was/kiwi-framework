@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="rename_kiwi_audit_log" author="dahmen">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="wdw_audit_log"/>
+                <not>
+                    <tableExists tableName="kiwi_audit_log"/>
+                </not>
+            </and>
+        </preConditions>
+        <renameTable oldTableName="wdw_audit_log" newTableName="kiwi_audit_log"/>
+        <comment>Prior to Kiwi 1.3.x, "kiwi_" tables used to be named "wdw_"</comment>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,5 @@
+spring:
+  datasource:
+    url: jdbc:tc:mariadb:///minio-testdb
+  liquibase:
+    change-log: classpath:db/changelog/db.minio-test.yaml

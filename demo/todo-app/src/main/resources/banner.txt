@@ -1,0 +1,8 @@
+
+| |  (_)        (_)
+| | _____      ___     __ _
+| |/ / \ \ /\ / / |   /  ('>-
+|   <| |\ V  V /| |   \__/
+|_|\_\_| \_/\_/ |_|    L\_
+Kotlin Infrastructure for Web Innovation
+(c) werdenktwas GmbH, 2024-2026

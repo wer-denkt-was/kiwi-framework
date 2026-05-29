@@ -1,0 +1,4 @@
+databaseChangeLog:
+  - include: { file: "classpath:db/changelog/db.storage-master.xml" }
+  - include: { file: "classpath:db/changelog/db.audit-log-master.xml" }
+  - include: { relativeToChangelogFile: true, file: "db.demo-001.yaml" }

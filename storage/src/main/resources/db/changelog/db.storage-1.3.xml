@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+
+    <changeSet id="rename_kiwi_file" author="dahmen">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="wdw_file"/>
+                <not>
+                    <tableExists tableName="kiwi_file"/>
+                </not>
+            </and>
+        </preConditions>
+        <renameTable oldTableName="wdw_file" newTableName="kiwi_file"/>
+        <comment>Prior to Kiwi 1.3.x, "kiwi_" tables used to be named "wdw_"</comment>
+    </changeSet>
+
+    <changeSet id="kiwi_file_add_uploaded_by_id" author="dahmen">
+        <addColumn tableName="kiwi_file">
+            <column name="uploaded_by_id" type="bigint"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

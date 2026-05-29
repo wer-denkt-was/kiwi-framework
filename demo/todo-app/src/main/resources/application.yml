@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: "kiwi-demo"
+  docker.compose:
+    file: "demo/todo-app/compose.yaml"
+    stop.command: down
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+  liquibase:
+    change-log: "classpath:db/changelog/db.changelog-master.yaml"
+  mail:
+    host: 'localhost'
+    port: 1925
+    username: ''
+    password: ''
+  mustache:
+    check-template-location: false
+
+server:
+  port: 7070
+
+kiwi:
+  jwt:
+    issuer: "kiwi-demo"
+    require-issuer: true
+    secret-key: "xV0bc8X81KNKhAFVAEQ5c8w8H0+elOf5sm12PEtOI1Da7PJNPUFET8iR+aZFyPnP3JrcgeVCTWfyENZ0bGO/Ww=="
+  storage:
+    provider: local
+    local:
+      parent-directory: "localFiles"

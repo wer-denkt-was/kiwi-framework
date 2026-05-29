@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+    <changeSet id="create_audit_log" author="dahmen">
+        <validCheckSum>
+            9:8748cfa783b7e0edd1a2f87183671950
+            <comment>Valid prior to 1.3</comment>
+        </validCheckSum>
+        <validCheckSum>
+            9:992e1b97ffe97b6255f69cc3abd4a024
+            <comment>Valid after 1.3</comment>
+        </validCheckSum>
+        <createTable tableName="wdw_audit_log">
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_audit_log"/>
+            </column>
+            <column name="user_id" type="BIGINT"/>
+            <column name="user_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="event_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="severity" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="occurred_on" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="event_details" type="BLOB">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

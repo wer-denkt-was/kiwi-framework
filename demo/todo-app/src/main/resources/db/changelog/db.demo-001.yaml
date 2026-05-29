@@ -1,0 +1,51 @@
+databaseChangeLog:
+  - changeSet:
+      id: initial-schema
+      author: dahmen
+      changes:
+        - createTable:
+            tableName: todo_list
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  constraints: { nullable: false, primaryKey: true }
+              - column:
+                  name: title
+                  type: varchar(255)
+                  constraints: { nullable: false }
+              - column:
+                  name: author
+                  type: varchar(255)
+        - createTable:
+            tableName: todo_item
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  constraints: { nullable: false, primaryKey: true }
+              - column:
+                  name: todo_list_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_todo_item_todo_list
+                    referencedTableName: todo_list
+                    referencedColumnNames: id
+                    deleteCascade: true
+              - column:
+                  name: title
+                  type: varchar(255)
+                  constraints: { nullable: false }
+              - column:
+                  name: content
+                  type: text
+                  constraints: { nullable: false }
+              - column:
+                  name: order_index
+                  type: integer
+                  constraints: { nullable: false }
+              - column:
+                  name: status
+                  type: enum('Open', 'Done')
+                  constraints: { nullable: false }

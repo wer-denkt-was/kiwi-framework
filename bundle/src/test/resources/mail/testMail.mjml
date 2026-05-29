@@ -1,0 +1,19 @@
+<mjml>
+    <mj-body>
+        <mj-section>
+            <mj-column>
+                <mj-text>
+                    Dear {{who}}, I wrote you, but you still ain't callin'
+                </mj-text>
+                <mj-text>
+                    I left {{what}} at the bottom.
+                    I sent two letters {{when}}, you must not've got 'em.
+                </mj-text>
+                <mj-text>
+                    Anyways, I hope you get this, man, hit me back.
+                    Just to chat, truly yours, your biggest fan, this is {{signedBy}}.
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>
