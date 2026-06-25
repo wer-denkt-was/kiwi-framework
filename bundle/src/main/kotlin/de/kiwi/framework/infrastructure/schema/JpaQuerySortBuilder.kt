@@ -3,9 +3,10 @@ package de.kiwi.framework.infrastructure.schema
 import de.kiwi.api.domain.Auditable
 import de.kiwi.api.domain.DomainException
 import de.kiwi.api.schema.EntitySchema
-import de.kiwi.api.schema.ToOneField
 import de.kiwi.api.schema.SingleValueSchema
+import de.kiwi.api.schema.ToOneField
 import jakarta.persistence.criteria.CriteriaBuilder
+import jakarta.persistence.criteria.Expression
 import jakarta.persistence.criteria.Path
 import jakarta.persistence.criteria.Root
 import org.springframework.data.domain.Sort
@@ -47,13 +48,15 @@ internal class JpaQuerySortBuilder<E : Any>(
             .takeIf { it.isNotEmpty() }
     }
 
-    private fun parseExpression(from: Path<Any>, schema: EntitySchema<Any>, properties: List<String>): Path<*>? {
+    private fun parseExpression(from: Path<Any>, schema: EntitySchema<Any>, properties: List<String>): Expression<*>? {
         val property = properties.firstOrNull() ?: return from
         val remaining = properties.drop(1)
 
         // Find column for property
         schema.columns.find { it.fieldName.equals(property, ignoreCase = true) }?.let { column ->
-            return column.selectFrom(from, builder) as Path<*>
+            val selection = column.selectFrom(from, builder)
+            return selection as? Expression<*> ?: throw InvalidQuerySort(property)
+
         }
 
         // Find subtype for property

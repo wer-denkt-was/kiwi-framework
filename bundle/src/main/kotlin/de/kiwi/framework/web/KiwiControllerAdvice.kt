@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 class KiwiControllerAdvice(private val manager: ExceptionResponseManager) {
 
     @ExceptionHandler(Exception::class)
-    fun handleException(ex: Exception, user: UserDescriptor): ResponseEntity<*> {
-        val response = manager.resolveException(ex, user)
+    fun handleException(ex: Exception): ResponseEntity<*> {
+        val response = manager.resolveException(ex)
         return ResponseEntity
             .status(response.status)
             .body(response.body)

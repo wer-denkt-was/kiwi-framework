@@ -1,6 +1,8 @@
 package de.kiwi.storage.domain
 
+import de.kiwi.api.domain.GlobalSingleton
 import de.kiwi.api.schema.ColumnType
+import de.kiwi.api.schema.ColumnType.Companion
 import java.net.URI
 import java.time.Duration
 
@@ -11,16 +13,6 @@ import java.time.Duration
  * @see de.kiwi.storage.KiwiStorageSignedFileUriTypeConfiguration.registerSignedFileUriProvider
  */
 class SignedFileUriType(private val duration: Duration) : ColumnType<URI, String> {
-    companion object {
-        /** Static provider used for signing file URIs */
-        lateinit var provider: SignedFileUriProvider
-
-        private fun requireProvider(): SignedFileUriProvider {
-            check(::provider.isInitialized) { "SignedFileUriType.provider has not been initialized" }
-            return provider
-        }
-    }
-
     override val valueType = String::class.java
 
     override fun parse(value: String): URI {
@@ -28,8 +20,7 @@ class SignedFileUriType(private val duration: Duration) : ColumnType<URI, String
     }
 
     override fun format(value: URI): String {
-        val provider = requireProvider()
-        val signedFile = provider.signFileUri(value, duration)
+        val signedFile = SignedFileUriProvider.signFileUri(value, duration)
         return signedFile.toString()
     }
 }
@@ -41,4 +32,9 @@ class SignedFileUriType(private val duration: Duration) : ColumnType<URI, String
  */
 fun interface SignedFileUriProvider {
     fun signFileUri(fileUri: URI, duration: Duration): URI
+
+    companion object Global : GlobalSingleton<SignedFileUriProvider>(), SignedFileUriProvider {
+        override val singletonName = "SignedFileUriProvider.Global"
+        override fun signFileUri(fileUri: URI, duration: Duration) = instance.signFileUri(fileUri, duration)
+    }
 }

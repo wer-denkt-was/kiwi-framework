@@ -161,7 +161,7 @@ private class TestMailSenderAdapter : MailSenderAdapter {
                 }
                 Unit
             }
-            on { setSubject(any<String>()) } doAnswer {
+            on { subject = any<String>() } doAnswer {
                 data.subject = it.getArgument(0)
             }
             on { setContent(any<Multipart>()) } doAnswer {

@@ -12,7 +12,7 @@ abstract class DomainEvent(
 ) : Auditable {
     final override val eventName: String = javaClass.name
     final override val occurredOn: LocalDateTime = LocalDateTime.now(clock)
-    final override val severity = Auditable.Severity.Event
+    override val severity = Auditable.Severity.Event
 }
 
 /**

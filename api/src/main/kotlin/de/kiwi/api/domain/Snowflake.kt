@@ -163,7 +163,7 @@ object Snowflake {
         return hostNameMachineId
     }
 
-    private fun String.parseValidMachineId(description: String): Long? {
+    private fun String.parseValidMachineId(description: String): Long {
         val rawValue = toLongOrNull()
             ?: throw AssertionError("Invalid Snowflake Machine ID: $description was \"$this\", not a valid integer")
 

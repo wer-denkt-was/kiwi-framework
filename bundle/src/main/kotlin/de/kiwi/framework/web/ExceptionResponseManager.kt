@@ -1,7 +1,6 @@
 package de.kiwi.framework.web
 
 import de.kiwi.api.domain.DomainException
-import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.api.util.slf4j
 import org.springframework.beans.factory.InitializingBean
 import org.springframework.dao.DataIntegrityViolationException
@@ -34,10 +33,10 @@ class ExceptionResponseManager(
         resolvers = resolverProviders.flatMap { it.provideResolvers() }
     }
 
-    fun resolveException(exception: Throwable, user: UserDescriptor): ErrorResponse {
+    fun resolveException(exception: Throwable): ErrorResponse {
         val resolver = findMostSpecificResolver(exception)
         @Suppress("UNCHECKED_CAST") val typedResolver = resolver as ExceptionResponseResolver<Throwable>
-        return typedResolver.resolve(exception, user)
+        return typedResolver.resolve(exception)
     }
 
     private fun findMostSpecificResolver(exception: Throwable): ExceptionResponseResolver<*> {
@@ -102,7 +101,7 @@ private val unknownExceptionResolver = ExceptionResponseResolver<Throwable> { ex
  */
 interface ExceptionResponseResolver<E : Throwable> {
     val exceptionClass: Class<E>
-    fun resolve(exception: E, user: UserDescriptor): ErrorResponse
+    fun resolve(exception: E): ErrorResponse
 
     companion object {
         /** Create an inline [ExceptionResponseResolver] instance */
@@ -112,7 +111,7 @@ interface ExceptionResponseResolver<E : Throwable> {
 
             override val exceptionClass = E::class.java
 
-            override fun resolve(exception: E, user: UserDescriptor): ErrorResponse {
+            override fun resolve(exception: E): ErrorResponse {
                 val resolved = resolveFn(exception)
                 return ErrorResponse(
                     status = resolved.status,
@@ -120,10 +119,6 @@ interface ExceptionResponseResolver<E : Throwable> {
                         message = resolved.message,
                         arguments = resolved.arguments,
                         errorType = resolved.errorType,
-                        userInfo = ErrorResponse.UserInfo(
-                            userId = user.userId,
-                            username = user.username,
-                        ),
                     )
                 )
             }
@@ -150,12 +145,6 @@ data class ErrorResponse(
         val message: String,
         val arguments: Map<String, *>,
         val errorType: String,
-        val userInfo: UserInfo,
-    )
-
-    data class UserInfo(
-        val userId: Long?,
-        val username: String?,
     )
 }
 

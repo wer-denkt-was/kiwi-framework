@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInfo
 import org.springframework.beans.factory.annotation.Autowired
 
-@de.kiwi.demo.access.AccessControlTest
+@AccessControlTest
 class UserAccountAccessTest {
 
     @PersistenceContext
@@ -28,7 +28,7 @@ class UserAccountAccessTest {
     lateinit var querySchemaService: QuerySchemaService
 
     @Autowired
-    lateinit var userAccountHolder: de.kiwi.demo.access.TestUserAccountHolder
+    lateinit var userAccountHolder: TestUserAccountHolder
 
     @Autowired
     lateinit var userAccountRepository: UserAccountRepository

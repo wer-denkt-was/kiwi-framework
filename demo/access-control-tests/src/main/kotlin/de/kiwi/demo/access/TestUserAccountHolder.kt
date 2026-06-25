@@ -1,5 +1,6 @@
 package de.kiwi.demo.access
 
+import de.kiwi.api.application.service.UserDescriptorProvider
 import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.api.schema.FieldAccessControl
 import de.kiwi.api.schema.FieldAccessRequirementBuilder
@@ -34,7 +35,7 @@ class TestUserAccountHolder : InitializingBean, Closeable {
     }
 
     override fun afterPropertiesSet() {
-        FieldAccessControl.provideFieldAccessUserContext {
+        UserDescriptorProvider.provideInstance {
             currentUserAccount.get()
                 ?.let { UserAccountDescriptor(it) }
                 ?: UserDescriptor.ANONYMOUS

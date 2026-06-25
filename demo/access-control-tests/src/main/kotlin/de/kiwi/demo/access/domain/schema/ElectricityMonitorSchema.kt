@@ -11,9 +11,9 @@ private val monitorTypeColumnType = ColumnType.enum<MonitorType>()
 
 object ElectricityMonitorSchema : EntitySchema<ElectricityMonitor>() {
     val id by entityId()
-    val monitorNumber by column(de.kiwi.demo.access.domain.ElectricityMonitor::monitorNumber)
-    val monitorType by column<MonitorType, _>(de.kiwi.demo.access.domain.ElectricityMonitor::monitorType, monitorTypeColumnType)
-    val solarSystem by toOne(de.kiwi.demo.access.domain.ElectricityMonitor::solarSystem, SolarSystemSchema)
+    val monitorNumber by column(ElectricityMonitor::monitorNumber)
+    val monitorType by column<MonitorType, _>(ElectricityMonitor::monitorType, monitorTypeColumnType)
+    val solarSystem by toOne(ElectricityMonitor::solarSystem, SolarSystemSchema)
 }
 
 object ElectricityMonitorFieldsets : FieldsetsAvailable<ElectricityMonitor>(ElectricityMonitorSchema) {

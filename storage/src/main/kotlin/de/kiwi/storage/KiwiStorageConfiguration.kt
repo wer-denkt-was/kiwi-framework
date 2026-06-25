@@ -3,16 +3,19 @@ package de.kiwi.storage
 import aws.sdk.kotlin.runtime.auth.credentials.StaticCredentialsProvider
 import aws.sdk.kotlin.services.s3.S3Client
 import aws.smithy.kotlin.runtime.net.url.Url
+import de.kiwi.api.application.GlobalSingletonBean
 import de.kiwi.api.application.service.AuthenticationTokenService
 import de.kiwi.api.application.service.FileStorageService
 import de.kiwi.storage.KiwiStorageProperties.S3Properties.ObjectUriType
 import de.kiwi.storage.application.WhenFileDeletedThenRemoveFromStorage
+import de.kiwi.storage.domain.SignedFileUriProvider
 import de.kiwi.storage.infrastructure.DataUriFileStorageService
 import de.kiwi.storage.infrastructure.NullFileStorageService
 import de.kiwi.storage.infrastructure.local.LocalFileStorageService
 import de.kiwi.storage.infrastructure.s3.S3FileStorageService
 import jakarta.servlet.ServletContext
 import org.springframework.beans.factory.ObjectProvider
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.domain.EntityScan
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -20,7 +23,6 @@ import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Import
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 
 @Configuration
@@ -28,7 +30,6 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 @ComponentScan("de.kiwi.storage")
 @EntityScan("de.kiwi.storage.domain")
 @EnableJpaRepositories("de.kiwi.storage.application")
-@Import(KiwiStorageSignedFileUriTypeConfiguration::class)
 class KiwiStorageConfiguration(
     private val props: KiwiStorageProperties,
     private val context: ApplicationContext,
@@ -45,6 +46,17 @@ class KiwiStorageConfiguration(
             KiwiStorageProperties.StorageProvider.Local -> createLocalFileStorage()
         }
     }
+
+    @Bean
+    @ConditionalOnBean(FileStorageService::class)
+    @ConditionalOnMissingBean(SignedFileUriProvider::class)
+    fun signedFileUriProvider(service: FileStorageService): SignedFileUriProvider {
+        return SignedFileUriProvider { uri, duration -> service.signFileUri(uri, duration).signedUri }
+    }
+
+    @Bean
+    fun signedFileUriProviderGlobalSingletonBean(provider: ObjectProvider<SignedFileUriProvider>) =
+        GlobalSingletonBean(SignedFileUriProvider.Global, provider)
 
     private fun createS3Storage(): FileStorageService {
         val client = S3Client {

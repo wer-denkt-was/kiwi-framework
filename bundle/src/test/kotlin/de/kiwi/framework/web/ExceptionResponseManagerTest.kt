@@ -40,7 +40,7 @@ class ExceptionResponseManagerTest {
     }
 
     private fun assertErrorMessage(expectedMessage: String, exception: Exception) {
-        val actualResponse = manager.resolveException(exception, user = dummyUser)
+        val actualResponse = manager.resolveException(exception)
         println("Resolved ${exception.javaClass.name} => $actualResponse")
         assertEquals(expectedMessage, actualResponse.body.message)
     }

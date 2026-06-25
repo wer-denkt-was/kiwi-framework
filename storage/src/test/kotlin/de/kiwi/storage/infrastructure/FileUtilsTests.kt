@@ -11,7 +11,7 @@ class FileUtilsTests {
     @Test
     fun withTemporaryFile() {
         var tmpFileOutsideScope: Path? = null
-        val dataFromFile = de.kiwi.storage.infrastructure.withTemporaryFile { tmpFile ->
+        val dataFromFile = withTemporaryFile { tmpFile ->
             tmpFileOutsideScope = tmpFile
             println("Temporary file: $tmpFile")
             assertTrue(Files.exists(tmpFile))
@@ -38,7 +38,7 @@ class FileUtilsTests {
         // Verify against GNU sha256 "hashalot" util:
         // $ echo -n "This was a triumph. I'm making a note here; \"Huge success\"." | sha256 -x
         val text = """This was a triumph. I'm making a note here; "Huge success"."""
-        val sha256 = de.kiwi.storage.infrastructure.withTemporaryFile { tmp ->
+        val sha256 = withTemporaryFile { tmp ->
             tmp.writeText(text)
             tmp.fileChecksumSha256()
         }

@@ -1,7 +1,7 @@
 package de.kiwi.api.schema
 
+import de.kiwi.api.application.service.UserDescriptorProvider
 import de.kiwi.api.domain.UserDescriptor
-import de.kiwi.api.schema.FieldAccessControl.Companion.contextUserDescriptor
 import de.kiwi.api.schema.FieldAccessControl.Companion.invoke
 import de.kiwi.api.schema.FieldAccessControl.Requirement
 import de.kiwi.api.util.slf4j
@@ -27,11 +27,11 @@ interface FieldAccessControl<E : Any> {
     fun checkAccess(context: Context<E>, user: UserDescriptor): Boolean
 
     /**
-     * Check if the current user, determined using the [contextUserDescriptor], is allowed to access the associated
-     * field value within the given [Context].
+     * Check if the current user, determined using the [UserDescriptorProvider.Global],
+     * is allowed to access the associated field value within the given [Context].
      * The context is expected to provide values for the columns/relations indicated by [requirements].
      */
-    fun checkAccess(context: Context<E>) = checkAccess(context, user = contextUserDescriptor())
+    fun checkAccess(context: Context<E>) = checkAccess(context, user = globalUserDescriptor())
 
     /** Combine this [FieldAccessControl] with another, using a logical `or` disjunction operation */
     infix fun or(other: FieldAccessControl<E>) = anyOf(this, other)
@@ -79,9 +79,6 @@ interface FieldAccessControl<E : Any> {
     }
 
     companion object {
-        @Volatile
-        private lateinit var fieldAccessUserContext: FieldAccessUserContext
-
         /**
          * Construct a [FieldAccessControl] instance with the specified requirements and field-access checking logic.
          *
@@ -163,24 +160,8 @@ interface FieldAccessControl<E : Any> {
             override fun checkAccess(context: Context<Nothing>, user: UserDescriptor) = true
         }
 
-        fun provideFieldAccessUserContext(context: FieldAccessUserContext) {
-            synchronized(this) {
-                fieldAccessUserContext = context
-            }
-        }
-
-        private fun contextUserDescriptor(): UserDescriptor {
-            val context = synchronized(this) {
-                if (::fieldAccessUserContext.isInitialized) {
-                    fieldAccessUserContext
-                } else {
-                    log.warn("No FieldAccessUserContext was provided to FieldAccessControl, assuming UserDescriptor.ANONYMOUS by default")
-                    val anonymousContext = FieldAccessUserContext { UserDescriptor.ANONYMOUS }
-                    fieldAccessUserContext = anonymousContext
-                    anonymousContext
-                }
-            }
-            return context.fieldAccessUserDescriptor()
+        private fun globalUserDescriptor(): UserDescriptor {
+            return UserDescriptorProvider.currentUser()
         }
     }
 }

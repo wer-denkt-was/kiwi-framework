@@ -1,11 +1,11 @@
 package de.kiwi.framework.infrastructure.schema
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import de.kiwi.api.application.service.UserDescriptorProvider
 import de.kiwi.api.domain.BaseEntity_
 import de.kiwi.api.domain.DomainException
 import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.api.generic.PageResult
-import de.kiwi.api.schema.FieldAccessControl
 import de.kiwi.api.schema.QuerySchemaService
 import de.kiwi.framework.KiwiFrameworkConfiguration
 import de.kiwi.framework.infrastructure.generic.*
@@ -66,7 +66,7 @@ class JpaQuerySchemaServiceTest {
         @JvmStatic
         @BeforeAll
         fun setUpClass() {
-            FieldAccessControl.provideFieldAccessUserContext { UserDescriptor.SYSTEM }
+            UserDescriptorProvider.provideInstance { UserDescriptor.SYSTEM }
         }
     }
 

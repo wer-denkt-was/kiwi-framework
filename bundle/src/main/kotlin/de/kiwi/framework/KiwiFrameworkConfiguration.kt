@@ -1,5 +1,6 @@
 package de.kiwi.framework
 
+import de.kiwi.api.application.GlobalSingletonBean
 import de.kiwi.api.application.service.AuthenticationTokenService
 import de.kiwi.api.application.service.ClockProvider
 import de.kiwi.api.application.service.TransactionService
@@ -10,7 +11,6 @@ import de.kiwi.framework.infrastructure.generic.GenericHandlerConfiguration
 import de.kiwi.framework.infrastructure.jpa.EntityTypeProviderConfiguration
 import de.kiwi.framework.infrastructure.mail.MailSenderConfiguration
 import de.kiwi.framework.infrastructure.olap.AnalyticalReportConfiguration
-import de.kiwi.framework.infrastructure.schema.FieldAccessControlInitializer
 import de.kiwi.framework.infrastructure.security.AuthenticationUserDescriptorConverter
 import de.kiwi.framework.infrastructure.security.JwtTokenService
 import de.kiwi.framework.infrastructure.security.SpringUserDescriptorProvider
@@ -39,7 +39,6 @@ import java.time.ZoneOffset
     CommandQueryEventBusConfiguration::class,
     GenericHandlerConfiguration::class,
     AnalyticalReportConfiguration::class,
-    FieldAccessControlInitializer::class,
     KiwiWebConfiguration::class,
     MailSenderConfiguration::class,
 )
@@ -56,6 +55,10 @@ class KiwiFrameworkConfiguration(private val props: KiwiFrameworkProperties) {
         val converters = converterProvider.toList()
         return SpringUserDescriptorProvider(converters)
     }
+
+    @Bean
+    fun userDescriptorGlobalSingletonBean(provider: ObjectProvider<UserDescriptorProvider>) =
+        GlobalSingletonBean(UserDescriptorProvider.Global, provider)
 
     @Bean
     @ConditionalOnMissingBean(TransactionService::class)

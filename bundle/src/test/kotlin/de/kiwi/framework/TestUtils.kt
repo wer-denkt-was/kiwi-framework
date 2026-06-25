@@ -3,7 +3,6 @@ package de.kiwi.framework
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.databind.node.TextNode
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.api.generic.EntityCreated
 import de.kiwi.api.generic.EntityDeleted

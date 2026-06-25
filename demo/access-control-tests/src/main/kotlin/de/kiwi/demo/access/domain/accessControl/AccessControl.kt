@@ -12,5 +12,5 @@ import de.kiwi.demo.access.domain.UserAccount_
  * ```
  */
 val accessControl = AccessControlBuilder.byUserRelation<UserAccount> { account, user ->
-    equal(account[de.kiwi.demo.access.domain.UserAccount_.externalIdentity], user.identity)
+    equal(account[UserAccount_.externalIdentity], user.identity)
 }

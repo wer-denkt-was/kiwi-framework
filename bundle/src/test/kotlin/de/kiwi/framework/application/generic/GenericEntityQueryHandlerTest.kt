@@ -29,7 +29,7 @@ class GenericEntityQueryHandlerTest {
     private lateinit var entityManager: EntityManager
 
     @Autowired
-    private lateinit var handler: de.kiwi.api.application.generic.GenericEntityQueryHandler
+    private lateinit var handler: GenericEntityQueryHandler
 
     private lateinit var ex1: ExampleEntity
     private lateinit var ex2: ExampleEntity

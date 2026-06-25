@@ -141,9 +141,9 @@ private fun ColumnField<*, *, *>.assertThat(
     assertEquals(primaryKey, this.primaryKey)
 
     if (isType) {
-        assertInstanceOf(de.kiwi.api.schema.ColumnSelector.EntityTypeSelector::class.java, this.selector)
+        assertInstanceOf(ColumnSelector.EntityTypeSelector::class.java, this.selector)
     } else {
-        val selector = assertInstanceOf(de.kiwi.api.schema.ColumnSelector.AttributeSelector::class.java, this.selector)
+        val selector = assertInstanceOf(ColumnSelector.AttributeSelector::class.java, this.selector)
         val expectedPath = path.map { it.name to it.javaMember }
         val actualPath = selector.path.attributes.map { it.name to it.javaMember }
         assertEquals(expectedPath, actualPath)

@@ -1,4 +1,4 @@
-package de.kiwi.storage.application;
+package de.kiwi.storage.application
 
 import de.kiwi.storage.domain.FileEntity
 import de.kiwi.storage.domain.FileId

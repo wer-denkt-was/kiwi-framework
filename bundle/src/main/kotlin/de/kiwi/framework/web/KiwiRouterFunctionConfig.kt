@@ -19,7 +19,6 @@ import org.springframework.web.servlet.function.router
 @EnableConfigurationProperties(KiwiFrameworkProperties::class)
 class KiwiRouterFunctionConfig(
     private val helper: KiwiRouteHelper,
-    private val userDescriptorProvider: UserDescriptorProvider,
     private val exceptionResponseManager: ExceptionResponseManager,
 ) {
     @Bean
@@ -66,8 +65,7 @@ class KiwiRouterFunctionConfig(
     }
 
     private fun handleException(ex: Throwable): ServerResponse {
-        val user = userDescriptorProvider.currentUser()
-        val response = exceptionResponseManager.resolveException(ex, user)
+        val response = exceptionResponseManager.resolveException(ex)
         return ServerResponse.status(response.status).body(response.body)
     }
 }

@@ -1,5 +1,6 @@
 package de.kiwi.api.application.service
 
+import de.kiwi.api.domain.GlobalSingleton
 import de.kiwi.api.domain.UserDescriptor
 
 /**
@@ -12,4 +13,9 @@ fun interface UserDescriptorProvider {
      * If the request is executed internally by the system itself, [UserDescriptor.SYSTEM] is returned.
      */
     fun currentUser(): UserDescriptor
+
+    companion object Global : GlobalSingleton<UserDescriptorProvider>(), UserDescriptorProvider {
+        override val singletonName = "UserDescriptorProvider.Global"
+        override fun currentUser() = instance.currentUser()
+    }
 }

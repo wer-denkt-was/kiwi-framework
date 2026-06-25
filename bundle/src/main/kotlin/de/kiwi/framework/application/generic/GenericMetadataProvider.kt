@@ -146,7 +146,7 @@ class GenericMetadataProvider(
         description = javaType.typeName,
     )
 
-    private fun createQueryDescriptor(queryClass: Class<*>, entityClass: Class<*>): GenericMetadata.QueryDescriptor? {
+    private fun createQueryDescriptor(queryClass: Class<*>, entityClass: Class<*>): GenericMetadata.QueryDescriptor {
         val filterType = querySchemaProvider.findFilterType(entityClass)
 
         val filterProperties = filterType?.let { type ->
