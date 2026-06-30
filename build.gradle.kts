@@ -1,4 +1,5 @@
 plugins {
+    base
     id(libs.plugins.gitVersioning.get().pluginId)
 }
 
@@ -50,3 +51,23 @@ gitVersioning.apply {
 
 // Remove trailing "-0" (distance from tag) on exact match
 version = version.let { it as? String }?.removeSuffix("-0") ?: version
+
+// Create all-components bundle zip for publishing packaged distributions
+tasks.register<Zip>("bundleAllComponentsMavenCentralArchive") {
+    group = "publishing"
+    description = "Assembles all the Maven Central Archives"
+
+    destinationDirectory = layout.buildDirectory.dir("distributions")
+    archiveFileName = "kiwi-components-${project.version}-maven-bundle.zip"
+
+    subprojects.mapNotNull { it.tasks.findByName("bundleMavenCentralArchive") }.forEach { bundleSubtask ->
+        dependsOn(bundleSubtask)
+        bundleSubtask.outputs.files.forEach { file ->
+            from(zipTree(file))
+        }
+    }
+}
+
+tasks.clean {
+    delete(layout.buildDirectory)
+}
