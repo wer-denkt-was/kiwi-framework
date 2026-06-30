@@ -14,10 +14,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("com.samskivert:jmustache")
 
     // Optional Dependencies
     compileOnly("org.springframework.boot:spring-boot-starter-actuator")
-    compileOnly("com.samskivert:jmustache")
 
     // Spring Security
     implementation("org.springframework.security:spring-security-core")

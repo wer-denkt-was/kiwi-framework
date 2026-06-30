@@ -26,7 +26,7 @@ object FileFieldsets : FieldsetsAvailable<FileEntity>(FileSchema) {
     /**
      * Create a dynamic fieldset with a signed [fileUri][FileSchema.fileUri] field.
      * This [ColumnField] field will use the [SignedFileUriType] instead of the default [UriType].
-     * @see [SignedFileUriType.provider]
+     * @see [SignedFileUriProvider]
      */
     fun withSignedFileUri(duration: Duration) = FileSchema.buildFieldset(name = "<signed-$duration>") {
         extendsFieldset(default)

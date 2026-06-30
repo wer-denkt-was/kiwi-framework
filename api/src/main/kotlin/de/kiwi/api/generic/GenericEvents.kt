@@ -35,6 +35,7 @@ data class EntityCreated(
             message = "Use a specific Fieldset instead of implicit default from FieldsetsAvailable",
             replaceWith = ReplaceWith("fromEntity(entity, fieldset = fieldsets.default, user = user)")
         )
+        @Suppress("DEPRECATION")
         fun <E : BaseEntity<*>> fromEntity(
             entity: E,
             fieldsets: FieldsetsAvailable<E>,
