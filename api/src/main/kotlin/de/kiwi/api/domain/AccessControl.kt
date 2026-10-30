@@ -3,6 +3,7 @@ package de.kiwi.api.domain
 import de.kiwi.api.util.CriteriaDsl
 import jakarta.persistence.criteria.*
 import jakarta.persistence.metamodel.SingularAttribute
+import org.springframework.data.jpa.domain.PredicateSpecification
 import org.springframework.data.jpa.domain.Specification
 import java.util.*
 import kotlin.jvm.optionals.getOrNull
@@ -119,6 +120,24 @@ fun interface AccessControl<E : Any> {
         specification.lift() or checkAuthorized(user)
     }
 
+    /**
+     * Compose this [AccessControl] instance with a query-independent precondition [PredicateSpecification]
+     * that must be satisfied additionally before user authorization is checked, using conjunction.
+     * Unlike a plain [Specification], a [PredicateSpecification] can also be applied within access-control subqueries.
+     */
+    infix fun and(specification: PredicateSpecification<E>) = AccessControl { user ->
+        specification.lift() and checkAuthorized(user)
+    }
+
+    /**
+     * Compose this [AccessControl] instance with a query-independent precondition [PredicateSpecification]
+     * that can be satisfied to allow access instead of user authorization being checked, using disjunction.
+     * Unlike a plain [Specification], a [PredicateSpecification] can also be applied within access-control subqueries.
+     */
+    infix fun or(specification: PredicateSpecification<E>) = AccessControl { user ->
+        specification.lift() or checkAuthorized(user)
+    }
+
     companion object {
         /**
          * Create an [AccessControl] instance from a function that produces a [Specification] for a given [UserDescriptor].
@@ -127,6 +146,20 @@ fun interface AccessControl<E : Any> {
          * @return [AccessControl] instance using the provided specification logic
          */
         inline fun <E : Any> of(crossinline filter: (UserDescriptor) -> Specification<E>) =
+            AccessControl { user ->
+                val specification = filter(user)
+                specification.lift()
+            }
+
+        /**
+         * Create an [AccessControl] instance from a function that produces a [PredicateSpecification]
+         * for a given [UserDescriptor].
+         * Since a [PredicateSpecification] is query-independent, the resulting [AccessControl] can also be applied
+         * within access-control subqueries.
+         * @param filter Function defining a [PredicateSpecification] for a given [UserDescriptor]
+         * @return [AccessControl] instance using the provided specification logic
+         */
+        inline fun <E : Any> ofPredicate(crossinline filter: (UserDescriptor) -> PredicateSpecification<E>) =
             AccessControl { user ->
                 val specification = filter(user)
                 specification.lift()
@@ -158,14 +191,16 @@ fun interface AccessControl<E : Any> {
 
         /**
          * Combine multiple [AccessControl] instances using logical OR (disjunction)
-         * The resulting [AccessControl] grants access if any of the provided access-controls grant access.
+         * The resulting [AccessControl] grants access if any of the provided access-controls grant access,
+         * and unrestricted access if any of them grants unrestricted access (or if no controls are given).
          * @param controls The [AccessControl] instances to combine
          * @return An [AccessControl] instance representing the disjunction of all controls
          */
         fun <E : Any> anyOf(vararg controls: AccessControl<E>) = AccessControl<E> { user ->
-            controls.fold(accessControlUnrestricted()) { disjunction, accessControl ->
-                disjunction or accessControl.checkAuthorized(user)
-            }
+            controls
+                .map { accessControl -> accessControl.checkAuthorized(user) }
+                .reduceOrNull { disjunction, specification -> disjunction or specification }
+                ?: accessControlUnrestricted()
         }
     }
 }
@@ -278,16 +313,13 @@ typealias AccessControlParentChildPath<P, C> =
 
 /**
  * This specialized Specification interface allows specifications to be used as part of a nested subquery.
- * Instances must be called with a non-null [CriteriaQuery] parameter, otherwise an [IllegalStateException] is thrown.
  */
 fun interface AccessControlSpecification<E : Any> : Specification<E> {
     /**
      * @see Specification.toPredicate
      */
-    override fun toPredicate(root: Root<E>, query: CriteriaQuery<*>?, builder: CriteriaBuilder): Predicate? {
-        checkNotNull(query) { "Missing CriteriaQuery in AccessControlSpecification" }
-        return accessControlPredicate(root, query, builder)
-    }
+    override fun toPredicate(root: Root<E>, query: CriteriaQuery<*>, builder: CriteriaBuilder): Predicate? =
+        accessControlPredicate(root, query, builder)
 
     /**
      * Specialized version of [Specification.toPredicate], accepting a generalized [AbstractQuery]
@@ -306,19 +338,37 @@ fun interface AccessControlSpecification<E : Any> : Specification<E> {
     /**
      * @see Specification.or
      */
-    override infix fun or(other: Specification<E>?) = AccessControlSpecification { root, query, builder ->
+    override infix fun or(other: Specification<E>) = AccessControlSpecification { root, query, builder ->
         val left = accessControlPredicate(root, query, builder)
         val right = other.lift().accessControlPredicate(root, query, builder)
-        builder.composeNullable(left, right, CriteriaBuilder::or)
+        builder.composeOr(left, right)
     }
 
     /**
      * @see Specification.and
      */
-    override infix fun and(other: Specification<E>?) = AccessControlSpecification { root, query, builder ->
+    override infix fun and(other: Specification<E>) = AccessControlSpecification { root, query, builder ->
         val left = accessControlPredicate(root, query, builder)
         val right = other.lift().accessControlPredicate(root, query, builder)
-        builder.composeNullable(left, right, CriteriaBuilder::and)
+        builder.composeAnd(left, right)
+    }
+
+    /**
+     * @see Specification.or
+     */
+    override infix fun or(other: PredicateSpecification<E>) = AccessControlSpecification { root, query, builder ->
+        val left = accessControlPredicate(root, query, builder)
+        val right = other.toPredicate(root, builder)
+        builder.composeOr(left, right)
+    }
+
+    /**
+     * @see Specification.and
+     */
+    override infix fun and(other: PredicateSpecification<E>) = AccessControlSpecification { root, query, builder ->
+        val left = accessControlPredicate(root, query, builder)
+        val right = other.toPredicate(root, builder)
+        builder.composeAnd(left, right)
     }
 }
 
@@ -377,31 +427,48 @@ interface AccessControlContext : CriteriaBuilder {
 /**
  * Adopt this [Specification] as a specialized [AccessControlSpecification],
  * either by casting or by wrapping a new instance that attempts to downcast
- * the given [AbstractQuery] into a [CriteriaQuery], or passes `null` otherwise
+ * the given [AbstractQuery] into a [CriteriaQuery].
+ * Since Spring Data JPA 4, [Specification.toPredicate] requires a non-null [CriteriaQuery],
+ * so a plain [Specification] cannot be applied within a subquery and throws an [IllegalStateException].
+ * Use a query-independent [PredicateSpecification] instead, which can always be lifted.
  */
 @PublishedApi
 internal fun <E : Any> Specification<E>?.lift(): AccessControlSpecification<E> = when (this) {
     is AccessControlSpecification<E> -> this
     null -> accessControlUnrestricted()
     else -> AccessControlSpecification { root, abstractQuery, builder ->
-        val query = abstractQuery as? CriteriaQuery<*>
+        val query = checkNotNull(abstractQuery as? CriteriaQuery<*>) {
+            "Specification ${this::class.qualifiedName} cannot be applied within a subquery, " +
+                "use a PredicateSpecification, an AccessControlSpecification or de.kiwi.api.util.where instead"
+        }
         toPredicate(root, query, builder)
     }
 }
+
+/**
+ * Adopt this [PredicateSpecification] as a specialized [AccessControlSpecification].
+ * A [PredicateSpecification] does not depend on the query, so it can be applied to queries and subqueries alike.
+ */
+@PublishedApi
+internal fun <E : Any> PredicateSpecification<E>.lift(): AccessControlSpecification<E> =
+    AccessControlSpecification { root, _, builder -> toPredicate(root, builder) }
 
 @Suppress("UNCHECKED_CAST")
 private fun <E : Any> accessControlUnrestricted() = accessControlAlwaysNull as AccessControlSpecification<E>
 
 private val accessControlAlwaysNull = AccessControlSpecification<Nothing> { _, _, _ -> null }
 
-private inline fun CriteriaBuilder.composeNullable(
-    left: Predicate?,
-    right: Predicate?,
-    combine: CriteriaBuilder.(left: Predicate, right: Predicate) -> Predicate?,
-): Predicate? = when {
+/** Conjunction of nullable predicates, where `null` is unrestricted: `x and null` is `x`. */
+private fun CriteriaBuilder.composeAnd(left: Predicate?, right: Predicate?): Predicate? = when {
     left == null -> right
     right == null -> left
-    else -> combine(left, right)
+    else -> and(left, right)
+}
+
+/** Disjunction of nullable predicates, where `null` is unrestricted: `x or null` is unrestricted (`null`). */
+private fun CriteriaBuilder.composeOr(left: Predicate?, right: Predicate?): Predicate? = when {
+    left == null || right == null -> null
+    else -> or(left, right)
 }
 
 @PublishedApi

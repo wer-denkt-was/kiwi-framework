@@ -1,6 +1,6 @@
 package de.kiwi.framework.support
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.module.kotlin.jacksonObjectMapper
 import de.kiwi.api.generic.PageResult
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers.lessThan

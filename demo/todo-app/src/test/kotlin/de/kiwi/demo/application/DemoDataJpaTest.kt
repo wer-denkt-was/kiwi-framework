@@ -1,14 +1,14 @@
 package de.kiwi.demo.application
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.module.kotlin.jacksonObjectMapper
 import de.kiwi.api.application.service.ClockProvider
 import de.kiwi.api.domain.Roles
 import de.kiwi.api.domain.UserDescriptor
 import jakarta.persistence.EntityManager
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
-import org.springframework.boot.autoconfigure.domain.EntityScan
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.springframework.boot.persistence.autoconfigure.EntityScan
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Profile

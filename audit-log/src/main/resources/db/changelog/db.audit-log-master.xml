@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<databaseChangeLog
-        xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
-
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
     <include relativeToChangelogFile="true" file="db.audit-log-1.0.xml"/>
     <include relativeToChangelogFile="true" file="db.audit-log-1.3.xml"/>
     <include relativeToChangelogFile="true" file="db.audit-log-1.4.xml"/>
+    <include relativeToChangelogFile="true" file="db.audit-log-1.5.xml"/>
 </databaseChangeLog>

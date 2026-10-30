@@ -1,10 +1,18 @@
 package de.kiwi.api.util
 
+import de.kiwi.api.domain.AccessControlSpecification
 import de.kiwi.api.domain.EntityNotFound
 import jakarta.persistence.EntityManager
 import jakarta.persistence.criteria.*
+import jakarta.persistence.metamodel.CollectionAttribute
+import jakarta.persistence.metamodel.ListAttribute
+import jakarta.persistence.metamodel.MapAttribute
+import jakarta.persistence.metamodel.SetAttribute
+import jakarta.persistence.metamodel.SingularAttribute
+import org.hibernate.query.sqm.tree.domain.SqmPath
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.data.repository.CrudRepository
+import org.springframework.util.ClassUtils
 import kotlin.jvm.optionals.getOrNull
 import kotlin.reflect.KProperty1
 
@@ -32,11 +40,28 @@ fun EntityManager.flushAndClear() {
 
 /**
  * Convenience function for creating [Specification]s using the [CriteriaBuilder] as context.
+ * The resulting specification is an [AccessControlSpecification], so it can also be applied within subqueries,
+ * in which case [CriteriaDsl.queryOrNull] is `null`.
  */
 fun <E : Any> where(filter: DslSpecification<E>): Specification<E> =
-    Specification { from, query, builder -> CriteriaDsl(builder, query).filter(from) }
+    AccessControlSpecification { from, abstractQuery, builder ->
+        CriteriaDsl(builder, abstractQuery as? CriteriaQuery<*>).filter(from)
+    }
 
 typealias DslSpecification<E> = CriteriaDsl.(Root<E>) -> Predicate?
+
+private val hibernateSqmPathPresent =
+    ClassUtils.isPresent("org.hibernate.query.sqm.tree.domain.SqmPath", null)
+
+/**
+ * Resolve an attribute path by name, which may also be declared by a subtype of this path's entity type.
+ * Since Hibernate 7, subtype attributes are only resolved when requested explicitly using [SqmPath.get],
+ * otherwise this falls back to the standard [Path.get].
+ */
+@Suppress("UNCHECKED_CAST")
+internal fun <Y> Path<*>.getIncludingSubtypes(attributeName: String): Path<Y> =
+    if (hibernateSqmPathPresent && this is SqmPath<*>) get(attributeName, true) as Path<Y>
+    else get(attributeName)
 
 /**
  * Extension of [CriteriaBuilder] that marks the implementor is wrapping an underlying
@@ -102,5 +127,25 @@ fun <E, R> Path<E>.reusableJoin(attributeName: String, joinType: JoinType): Path
 
     @Suppress("UNCHECKED_CAST")
     return existing as Join<E, R>?
-        ?: join<E, R>(attributeName, joinType)
+        ?: joinIncludingSubtypes(attributeName, joinType)
+}
+
+/**
+ * Join an attribute by name, which may also be declared by a subtype of this path's entity type.
+ * Since Hibernate 7, [From.join] by attribute name does not resolve subtype attributes,
+ * so singular and plural attributes are resolved explicitly, and joined using the resolved attribute instead.
+ * Without Hibernate, this falls back to the standard [From.join] by attribute name.
+ */
+@Suppress("UNCHECKED_CAST")
+fun <E, R> From<*, E>.joinIncludingSubtypes(attributeName: String, joinType: JoinType): Join<E, R> {
+    if (hibernateSqmPathPresent && this is SqmPath<*>) {
+        when (val attribute = referencedPathSource.getSubPathSource(attributeName, true)) {
+            is SingularAttribute<*, *> -> return join(attribute as SingularAttribute<in E, R>, joinType)
+            is SetAttribute<*, *> -> return join(attribute as SetAttribute<in E, R>, joinType)
+            is ListAttribute<*, *> -> return join(attribute as ListAttribute<in E, R>, joinType)
+            is MapAttribute<*, *, *> -> return join(attribute as MapAttribute<in E, Any?, R>, joinType)
+            is CollectionAttribute<*, *> -> return join(attribute as CollectionAttribute<in E, R>, joinType)
+        }
+    }
+    return join(attributeName, joinType)
 }

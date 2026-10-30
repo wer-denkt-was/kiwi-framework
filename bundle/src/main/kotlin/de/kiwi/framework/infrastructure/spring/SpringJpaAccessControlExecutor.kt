@@ -231,7 +231,7 @@ class SpringJpaAccessControlExecutor<T : Any, ID : Any>(
         lateinit var idParameter: Parameter<Collection<ID>>
 
         @Suppress("UNCHECKED_CAST")
-        override fun toPredicate(root: Root<T>, query: CriteriaQuery<*>?, builder: CriteriaBuilder): Predicate {
+        override fun toPredicate(root: Root<T>, query: CriteriaQuery<*>, builder: CriteriaBuilder): Predicate {
             val entityInformation = domainEntityInfo()
             val idAttribute = entityInformation.requiredIdAttribute as SingularAttribute<T, ID>
             idParameter = builder.parameter(Collection::class.java as Class<Collection<ID>>)
@@ -241,7 +241,7 @@ class SpringJpaAccessControlExecutor<T : Any, ID : Any>(
 
     private inner class ByIdSpecification(private val id: ID) : Specification<T> {
         @Suppress("UNCHECKED_CAST")
-        override fun toPredicate(root: Root<T>, query: CriteriaQuery<*>?, builder: CriteriaBuilder): Predicate {
+        override fun toPredicate(root: Root<T>, query: CriteriaQuery<*>, builder: CriteriaBuilder): Predicate {
             val entityInformation = domainEntityInfo()
             val idAttribute = entityInformation.requiredIdAttribute as SingularAttribute<T, ID>
             return builder.equal(root[idAttribute], id)

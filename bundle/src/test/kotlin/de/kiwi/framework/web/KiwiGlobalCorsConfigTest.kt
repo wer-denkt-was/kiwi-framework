@@ -1,18 +1,26 @@
 package de.kiwi.framework.web
 
+import de.kiwi.framework.KiwiFrameworkProperties
+import de.kiwi.framework.KiwiFrameworkAutoConfiguration
+import de.kiwi.framework.infrastructure.bus.KiwiBusAutoConfiguration
+import de.kiwi.framework.infrastructure.mail.KiwiMailAutoConfiguration
+import de.kiwi.mjml.KiwiMjmlAutoConfiguration
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.boot.SpringBootConfiguration
-import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
+import org.springframework.boot.security.autoconfigure.actuate.web.servlet.ManagementWebSecurityAutoConfiguration
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
-import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration
+import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration
+import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration
+import org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Import
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseEntity
@@ -42,10 +50,20 @@ class KiwiGlobalCorsConfigTest {
             DataSourceAutoConfiguration::class,
             SecurityAutoConfiguration::class,
             SecurityFilterAutoConfiguration::class,
+            UserDetailsServiceAutoConfiguration::class,
+            ServletWebSecurityAutoConfiguration::class,
             ManagementWebSecurityAutoConfiguration::class,
+            // Only the global CORS configuration is under test
+            KiwiFrameworkAutoConfiguration::class,
+            KiwiBusAutoConfiguration::class,
+            KiwiMailAutoConfiguration::class,
+            KiwiWebAutoConfiguration::class,
+            KiwiOpenApiAutoConfiguration::class,
+            KiwiMjmlAutoConfiguration::class,
         ]
     )
     @Import(KiwiGlobalCorsConfig::class)
+    @EnableConfigurationProperties(KiwiFrameworkProperties::class)
     @RestController
     @RequestMapping("/corsTest")
     class KiwiGlobalCorsConfigTestApplicationConfig {
@@ -116,6 +134,7 @@ private fun ResponseEntity<*>.print() {
 
 private fun ResponseEntity<*>.getHeader(name: String): String? = headers.getFirst(name)
 
-private fun HttpHeaders.print() = forEach { (name, values) ->
+// Spring Framework 7: HttpHeaders no longer implements MultiValueMap
+private fun HttpHeaders.print() = forEach { name, values ->
     values.forEach { println("- $name: $it") }
 }

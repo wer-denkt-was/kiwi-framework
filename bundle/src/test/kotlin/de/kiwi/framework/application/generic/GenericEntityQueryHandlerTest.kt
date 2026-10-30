@@ -1,9 +1,9 @@
 package de.kiwi.framework.application.generic
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.NullNode
-import com.fasterxml.jackson.databind.node.ObjectNode
-import com.fasterxml.jackson.databind.node.TextNode
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.NullNode
+import tools.jackson.databind.node.ObjectNode
+import tools.jackson.databind.node.StringNode
 import de.kiwi.api.application.generic.GenericEntityQueryHandler
 import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.api.generic.PageResult
@@ -173,7 +173,7 @@ private fun matchExampleDefaultItem(id: ExampleId, name: String, optional: Strin
         "optional" to equalTo(optional.asJsonNode()),
     )
 
-private fun String?.asJsonNode() = if (this == null) NullNode.instance else TextNode.valueOf(this)
+private fun String?.asJsonNode() = if (this == null) NullNode.instance else StringNode.valueOf(this)
 
 private class ObjectNodeMatcher(
     private val matchKey: Matcher<String>,

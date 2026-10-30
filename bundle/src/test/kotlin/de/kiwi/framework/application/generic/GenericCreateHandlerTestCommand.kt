@@ -1,6 +1,6 @@
 package de.kiwi.framework.application.generic
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.api.generic.EntityCreated
 import de.kiwi.api.util.flushAndClear
@@ -35,7 +35,7 @@ class GenericCreateHandlerTestCommand {
     @Test
     fun handleCreate() {
         val command = CreateExample()
-        command.jsonBody = json("""{ "name": "Long Live The New Fresh", "optional": "Danimal Cannon" }""")
+        command.bind(json("""{ "name": "Long Live The New Fresh", "optional": "Danimal Cannon" }"""), objectMapper)
 
         val events = handler.handle(command, UserDescriptor.SYSTEM)
 
@@ -62,7 +62,7 @@ class GenericCreateHandlerTestCommand {
     @Test
     fun handleCreateJson() {
         val command = CreateExample()
-        command.jsonBody = json("""{ "name": "Milky Ways", "optional": "Bossfight" }""")
+        command.bind(json("""{ "name": "Milky Ways", "optional": "Bossfight" }"""), objectMapper)
 
         val events = handler.handle(command, UserDescriptor.SYSTEM)
 

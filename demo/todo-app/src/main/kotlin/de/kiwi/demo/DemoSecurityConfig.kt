@@ -1,5 +1,6 @@
 package de.kiwi.demo
 
+import de.kiwi.api.domain.Roles
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -27,12 +28,12 @@ class DemoSecurityConfig : WebMvcConfigurer {
         return InMemoryUserDetailsManager(
             User.withUsername("user")
                 .password(passwordEncoder.encode("user"))
-                .roles("USER")
+                .roles(Roles.USER)
                 .build(),
 
             User.withUsername("admin")
                 .password(passwordEncoder.encode("admin"))
-                .roles("USER", "ADMIN")
+                .roles(Roles.USER, Roles.ADMIN) // Granted authorities ROLE_USER and ROLE_ADMIN
                 .build()
         )
     }

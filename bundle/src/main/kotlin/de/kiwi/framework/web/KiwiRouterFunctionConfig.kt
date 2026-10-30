@@ -1,29 +1,79 @@
 package de.kiwi.framework.web
 
+import de.kiwi.api.application.query.QueryBus
+import de.kiwi.api.application.service.CommandQueryBus
+import de.kiwi.api.application.service.EntityTypeProvider
 import de.kiwi.api.application.service.QuerySchemaProvider
 import de.kiwi.api.application.service.UserDescriptorProvider
 import de.kiwi.framework.KiwiFrameworkProperties
+import de.kiwi.api.schema.FieldsetValidationService
 import de.kiwi.framework.application.generic.GenericHandlerProvider
+import de.kiwi.framework.application.generic.GenericMetadataProvider
 import de.kiwi.framework.application.olap.AnalyticalReportProvider
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.Order
+import org.springframework.core.convert.ConversionService
+import tools.jackson.databind.ObjectMapper
 import org.springframework.web.servlet.function.RouterFunctionDsl
 import org.springframework.web.servlet.function.ServerResponse
 import org.springframework.web.servlet.function.router
 
-@Configuration
-@EnableConfigurationProperties(KiwiFrameworkProperties::class)
+/**
+ * Router functions for the generic entity and analytical report endpoints.
+ * Imported by [KiwiWebAutoConfiguration].
+ */
+@Configuration(proxyBeanMethods = false)
 class KiwiRouterFunctionConfig(
     private val helper: KiwiRouteHelper,
     private val exceptionResponseManager: ExceptionResponseManager,
 ) {
     @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty("kiwi.web.generic-controller", matchIfMissing = true)
+    fun genericEntityMethodHandler(
+        commandQueryBus: CommandQueryBus,
+        entityTypeProvider: EntityTypeProvider,
+        querySchemaProvider: QuerySchemaProvider,
+        genericHandlerProvider: GenericHandlerProvider,
+        genericMetadataProvider: GenericMetadataProvider,
+        userDescriptorProvider: UserDescriptorProvider,
+        paginationResolver: PaginationResolver,
+        fieldsetValidationService: FieldsetValidationService,
+        conversionService: ConversionService,
+    ) = GenericEntityMethodHandler(
+        commandQueryBus = commandQueryBus,
+        entityTypeProvider = entityTypeProvider,
+        querySchemaProvider = querySchemaProvider,
+        genericHandlerProvider = genericHandlerProvider,
+        genericMetadataProvider = genericMetadataProvider,
+        userDescriptorProvider = userDescriptorProvider,
+        paginationResolver = paginationResolver,
+        fieldsetValidationService = fieldsetValidationService,
+        conversionService = conversionService,
+    )
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty("kiwi.web.report-controller", matchIfMissing = true)
+    fun analyticalReportMethodHandler(
+        queryBus: QueryBus,
+        objectMapper: ObjectMapper,
+        paginationResolver: PaginationResolver,
+        userDescriptorProvider: UserDescriptorProvider,
+        analyticalReportProvider: AnalyticalReportProvider,
+    ) = AnalyticalReportMethodHandler(
+        queryBus = queryBus,
+        objectMapper = objectMapper,
+        paginationResolver = paginationResolver,
+        userDescriptorProvider = userDescriptorProvider,
+        analyticalReportProvider = analyticalReportProvider,
+    )
+
+    @Bean
     @Order(20) // Ordered after analyticalReportRouter
-    @ConditionalOnBean(GenericHandlerProvider::class, GenericEntityMethodHandler::class, QuerySchemaProvider::class)
     @ConditionalOnProperty("kiwi.web.generic-controller", matchIfMissing = true)
     fun genericEntityRouter(
         genericHandlerProvider: GenericHandlerProvider,
@@ -41,7 +91,7 @@ class KiwiRouterFunctionConfig(
             POST(helper.basePath(path)) { request -> entityMethodHandler.handleCreate(request, entityClass) }
         }
         helper.forEachEntityPath(genericHandlerProvider.updateClasses.keys) { entityClass, path ->
-            PUT(helper.byIdPath(path)) { request -> entityMethodHandler.handleUpdate(request, entityClass) }
+            PATCH(helper.byIdPath(path)) { request -> entityMethodHandler.handleUpdate(request, entityClass) }
         }
         helper.forEachEntityPath(genericHandlerProvider.deleteClasses.keys) { entityClass, path ->
             DELETE(helper.byIdPath(path)) { request -> entityMethodHandler.handleDelete(request, entityClass) }
@@ -51,7 +101,6 @@ class KiwiRouterFunctionConfig(
 
     @Bean
     @Order(10) // Ordered before genericEntityRouter
-    @ConditionalOnBean(AnalyticalReportProvider::class, AnalyticalReportMethodHandler::class)
     @ConditionalOnProperty("kiwi.web.report-controller", matchIfMissing = true)
     fun analyticalReportRouter(
         analyticalReportProvider: AnalyticalReportProvider,

@@ -2,7 +2,7 @@ package de.kiwi.framework.infrastructure.schema
 
 import de.kiwi.api.application.service.QueryBuilder
 import de.kiwi.api.schema.QuerySchemaService
-import de.kiwi.framework.KiwiFrameworkConfiguration
+import de.kiwi.framework.SpringBootApplicationWithoutKiwi
 import de.kiwi.framework.infrastructure.generic.PublicationFieldsets
 import de.kiwi.framework.infrastructure.generic.PublicationFilter
 import jakarta.persistence.EntityManager
@@ -13,11 +13,10 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
-import org.springframework.boot.autoconfigure.domain.EntityScan
-import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.springframework.boot.persistence.autoconfigure.EntityScan
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Import
@@ -36,7 +35,7 @@ import java.time.LocalDate
 )
 class SchemaQueryBuilderTest {
 
-    @SpringBootApplication(exclude = [KiwiFrameworkConfiguration::class])
+    @SpringBootApplicationWithoutKiwi
     @ComponentScan("de.kiwi.framework.infrastructure.generic")
     @EntityScan("de.kiwi.api", "de.kiwi.framework.infrastructure.generic")
     @Import(JacksonAutoConfiguration::class)

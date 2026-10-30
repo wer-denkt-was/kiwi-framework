@@ -81,6 +81,29 @@ class EventBusTest {
     }
 
     @Test
+    fun subscribeAfterPublishInvalidatesCache() {
+        val firstSubscriber = FirstEventSubscriber()
+        val lateSubscriber = FirstEventSubscriber()
+        eventBus.subscribe(firstSubscriber)
+
+        eventBus.publish(listOf(FirstEvent("Alpha")), TestUser)
+        eventBus.subscribe(lateSubscriber)
+        eventBus.publish(listOf(FirstEvent("Beta")), TestUser)
+
+        assertThat(
+            firstSubscriber.events,
+            contains(
+                matchEvent<FirstEvent>(details = equalTo("Alpha")),
+                matchEvent<FirstEvent>(details = equalTo("Beta")),
+            )
+        )
+        assertThat(
+            lateSubscriber.events,
+            contains(matchEvent<FirstEvent>(details = equalTo("Beta")))
+        )
+    }
+
+    @Test
     fun publishRecursive() {
         val userCreatedEventSubscriber = UserCreatedEventSubscriber()
         val userEmailSentEventSubscriber = UserEmailSentEventSubscriber()

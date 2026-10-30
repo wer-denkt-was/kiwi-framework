@@ -4,7 +4,9 @@ import org.springframework.beans.factory.BeanFactory
 import org.springframework.beans.factory.BeanFactoryAware
 import org.springframework.beans.factory.config.BeanDefinition
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory
-import org.springframework.boot.autoconfigure.domain.EntityScan
+import org.springframework.boot.autoconfigure.AutoConfigurationPackages
+import org.springframework.boot.persistence.autoconfigure.EntityScan
+import org.springframework.boot.persistence.autoconfigure.EntityScanPackages
 import org.springframework.context.EnvironmentAware
 import org.springframework.context.ResourceLoaderAware
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
@@ -15,6 +17,7 @@ import org.springframework.core.type.filter.AnnotationTypeFilter
 import org.springframework.core.type.filter.AssignableTypeFilter
 import org.springframework.core.type.filter.TypeFilter
 import org.springframework.util.ClassUtils
+import java.lang.reflect.Modifier
 import kotlin.reflect.KClass
 
 /**
@@ -37,10 +40,19 @@ class ClassPathScannerUtil : BeanFactoryAware, ResourceLoaderAware, EnvironmentA
         this.environment = environment
     }
 
+    /**
+     * Find the base packages of the application and of Kiwi modules, which are scanned for schemata,
+     * generic commands/queries and reports. These are the union of:
+     * - Entity-scan packages, as declared by [@EntityScan][EntityScan] or registered by Kiwi auto configurations
+     * - Autoconfiguration packages, as declared by `@SpringBootApplication` or registered by Kiwi auto configurations
+     * - Packages of beans annotated with [@ComponentScan][ComponentScan]
+     */
     fun findEntityAndComponentBasePackages(): List<String> {
-        val entityPackages = findBaseScanPackages<EntityScan>({ it.basePackages }, { it.basePackageClasses })
+        val entityPackages = EntityScanPackages.get(beanFactory).packageNames
+        val autoConfigurationPackages =
+            if (AutoConfigurationPackages.has(beanFactory)) AutoConfigurationPackages.get(beanFactory) else emptyList()
         val componentPackages = findBaseScanPackages<ComponentScan>({ it.basePackages }, { it.basePackageClasses })
-        return entityPackages + componentPackages
+        return (entityPackages + autoConfigurationPackages + componentPackages).distinct()
     }
 
     private inline fun <reified A : Annotation> findBaseScanPackages(
@@ -109,9 +121,13 @@ class ClassPathScannerUtil : BeanFactoryAware, ResourceLoaderAware, EnvironmentA
         scanner.addIncludeFilter(includeFilter)
 
         return scanPackages
+            .asSequence()
             .flatMap { scanner.findCandidateComponents(it) }
             .filterNot { it.isAbstract } // Ignore abstract classes
             .mapNotNull { it.beanClassName }
             .map { ClassUtils.forName(it, classLoader) }
+            .filter { Modifier.isPublic(it.modifiers) } // Ignore non-public (e.g. private nested) classes
+            .distinct() // Classes found in overlapping packages
+            .toList()
     }
 }

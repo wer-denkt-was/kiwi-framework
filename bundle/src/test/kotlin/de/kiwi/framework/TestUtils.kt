@@ -1,8 +1,8 @@
 package de.kiwi.framework
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.ObjectNode
-import com.fasterxml.jackson.databind.node.TextNode
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.ObjectNode
+import tools.jackson.databind.node.StringNode
 import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.api.generic.EntityCreated
 import de.kiwi.api.generic.EntityDeleted
@@ -80,7 +80,7 @@ private fun jsonStringIs(
     matchString: Matcher<*>,
 ): Matcher<out JsonNode> = object : TypeSafeMatcher<JsonNode>() {
     override fun matchesSafely(item: JsonNode): Boolean {
-        return item is TextNode && matchString.matches(item.textValue())
+        return item is StringNode && matchString.matches(item.stringValue())
     }
 
     override fun describeTo(description: Description) {

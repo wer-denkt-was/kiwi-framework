@@ -11,22 +11,20 @@ import de.kiwi.demo.domain.command.CreateTodoList
 import de.kiwi.demo.domain.command.DeleteTodoList
 import de.kiwi.demo.domain.command.TodoListDeleted
 import de.kiwi.demo.domain.command.UpdateTodoList
-import de.kiwi.demo.domain.schema.TodoListSchema
 import org.springframework.stereotype.Component
 
 @Component
 class CreateTodoListHandler : GenericCreateHandler<CreateTodoList, TodoList>() {
-    override fun createEntity(create: CreateBody, user: UserDescriptor) = DomainResult { record ->
-        val title = create.require(TodoListSchema.title)
-        record(TodoList.create(title = title, user = user))
+    override fun createEntity(create: CreateTodoList, user: UserDescriptor) = DomainResult { record ->
+        record(TodoList.create(title = create.title, user = user))
     }
 }
 
 @Component
 class UpdateTodoListHandler : GenericUpdateHandler<UpdateTodoList, TodoList>() {
-    override fun updateEntity(update: UpdateBody, entity: TodoList, user: UserDescriptor) = DomainResult {
+    override fun updateEntity(update: UpdateTodoList, entity: TodoList, user: UserDescriptor) = DomainResult {
         user.requireAdminOrListAuthor(entity)
-        update.patchField(TodoListSchema.title)
+        update.patchFields(entity, update::title)
     }
 }
 

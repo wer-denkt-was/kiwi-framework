@@ -1,6 +1,6 @@
 plugins {
     base
-    id(libs.plugins.gitVersioning.get().pluginId)
+    alias(libs.plugins.gitVersioning)
 }
 
 // Initialize group and version

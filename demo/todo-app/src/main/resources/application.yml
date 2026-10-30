@@ -23,11 +23,9 @@ server:
   port: 7070
 
 kiwi:
-  jwt:
-    issuer: "kiwi-demo"
-    require-issuer: true
-    secret-key: "xV0bc8X81KNKhAFVAEQ5c8w8H0+elOf5sm12PEtOI1Da7PJNPUFET8iR+aZFyPnP3JrcgeVCTWfyENZ0bGO/Ww=="
   storage:
     provider: local
     local:
       parent-directory: "localFiles"
+      token:
+        secret-key: "xV0bc8X81KNKhAFVAEQ5c8w8H0+elOf5sm12PEtOI1Da7PJNPUFET8iR+aZFyPnP3JrcgeVCTWfyENZ0bGO/Ww=="

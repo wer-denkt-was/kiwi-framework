@@ -1,26 +1,28 @@
 package de.kiwi.framework.web
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.node.*
 import de.kiwi.api.domain.Command
 import de.kiwi.api.domain.EntityId
 import de.kiwi.api.domain.Transactional
+import de.kiwi.api.generic.GenericBodyCommand
+import de.kiwi.api.generic.GenericBodyFieldSource
+import de.kiwi.api.generic.GenericCreate
 import de.kiwi.api.schema.*
 import de.kiwi.api.util.lookupSupertypeArgument
+import de.kiwi.framework.support.introspectForCreation
+import de.kiwi.framework.support.introspectForDeserialization
 import io.swagger.v3.core.converter.AnnotatedType
 import io.swagger.v3.core.converter.ModelConverters
 import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.media.*
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass
-import org.springframework.stereotype.Component
+import org.springframework.beans.BeanUtils
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.node.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
 
-@Component
-@ConditionalOnClass(OpenAPI::class)
 class KiwiOpenApiHelper(
     private val objectMapper: ObjectMapper,
 ) {
@@ -66,7 +68,7 @@ class KiwiOpenApiHelper(
         }
 
         // Only include relation-fields (toOne, toMany, toManyMap) if schema is not a request body, i.e. is a GET response
-        // The rationale for this is that POST/PUT requests only rely on column-fields for supplying values in commands
+        // The rationale for this is that POST/PATCH requests only rely on column-fields for supplying values in commands
         val relationFieldModels = if (requestBody) {
             emptyMap<String, Schema<*>>()
         } else {
@@ -102,6 +104,46 @@ class KiwiOpenApiHelper(
         return entitySchemaModel
     }
 
+    /**
+     * Request body model of a generic create/update command, from its declared body fields.
+     * Update commands are patches, so no field is required. Unknown fields are rejected.
+     */
+    fun genericBodyCommandModel(context: OpenAPI, commandClass: Class<out GenericBodyCommand<*>>): Schema<*> {
+        val components = context.getOrCreateComponents()
+        val command = BeanUtils.instantiateClass(commandClass)
+        val create = command is GenericCreate<*>
+
+        val commandModel = ObjectSchema()
+        commandModel.name(commandClass.simpleName)
+        commandModel.description("Command ${commandClass.name}")
+        commandModel.additionalProperties(false)
+        command.bodyFields.forEach { field ->
+            val valueModel = when (val source = field.source) {
+                is GenericBodyFieldSource.Schema -> {
+                    val columnType = source.schemaField.type
+                    resolveColumnTypeModel(columnType, components)
+                }
+
+                is GenericBodyFieldSource.Property -> {
+                    val valueClass = objectMapper.typeFactory.constructType(field.valueType).rawClass
+                    resolveValueClassModel(valueClass, components)
+                }
+
+                is GenericBodyFieldSource.ToOneReference -> entityIdSchema(field.referencedIdType)
+
+                is GenericBodyFieldSource.ToManyReferences -> ArraySchema()
+                    .items(entityIdSchema(field.referencedIdType))
+
+                is GenericBodyFieldSource.Subtype -> StringSchema()
+                    ._enum(source.subtypes.keys.toList())
+            }
+
+            commandModel.addProperty(field.jsonKey, if (field.nullable) valueModel.withNullable() else valueModel)
+            if (create && field.required) commandModel.addRequiredItem(field.jsonKey)
+        }
+        return commandModel
+    }
+
     fun commandClassModels(
         context: OpenAPI,
         commandClass: Class<out Command<*>>,
@@ -111,10 +153,9 @@ class KiwiOpenApiHelper(
 
         fun assembleCommandClassSchema(create: Boolean): Schema<*> {
             val commandJavaType = objectMapper.typeFactory.constructType(commandClass)
-            val deserialization = objectMapper.deserializationConfig
             val introspect =
-                if (create) deserialization.introspectForCreation(commandJavaType)
-                else deserialization.introspect(commandJavaType)
+                if (create) objectMapper.introspectForCreation(commandJavaType)
+                else objectMapper.introspectForDeserialization(commandJavaType)
 
             val commandModel = ObjectSchema()
             commandModel.name(commandClass.simpleName)
@@ -201,10 +242,10 @@ class KiwiOpenApiHelper(
 
                 // Resolve schema model for column value-class type
                 else -> {
-                    // Resolve schema as $ref using ModelConverters
+                    // Resolve schema as $ref using ModelConverters. Swagger-core uses Jackson 2, so it is given the
+                    // plain Java class instead of a Jackson 3 JavaType, which Jackson 2 cannot resolve
                     val converters = ModelConverters.getInstance()
-                    val javaJsonType = objectMapper.typeFactory.constructType(valueClass)
-                    val annotatedType = AnnotatedType(javaJsonType).resolveAsRef(true)
+                    val annotatedType = AnnotatedType(valueClass).resolveAsRef(true)
                     val resolved = converters.resolveAsResolvedSchema(annotatedType)
 
                     // If resolved schema has a $ref, relativize the references,
@@ -231,7 +272,7 @@ class KiwiOpenApiHelper(
 }
 
 private fun jsonNodeTypeModel(jsonNodeType: Class<out JsonNode>) = when {
-    TextNode::class.java.isAssignableFrom(jsonNodeType) -> StringSchema()
+    StringNode::class.java.isAssignableFrom(jsonNodeType) -> StringSchema()
     BooleanNode::class.java.isAssignableFrom(jsonNodeType) -> BooleanSchema()
     IntNode::class.java.isAssignableFrom(jsonNodeType) -> IntegerSchema().format("int32")
     LongNode::class.java.isAssignableFrom(jsonNodeType) -> IntegerSchema().format("int64")

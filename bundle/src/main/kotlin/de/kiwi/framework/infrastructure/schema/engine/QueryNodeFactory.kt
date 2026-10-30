@@ -44,7 +44,7 @@ internal class QueryNodeFactory<E : Any>(
         val selections = selectPrimaryKeys + selectSpan.selections() + selectAdditional
 
         // SELECT <...pk>, <...column>, (...<nested.column>) FROM <entity> WHERE <filter>
-        query.multiselect(selections.distinct())
+        query.select(builder.tuple(selections.distinct()))
         specification.toPredicate(entityRoot, query, builder)
             ?.let { query.where(it) }
 
@@ -143,7 +143,7 @@ internal class QueryNodeFactory<E : Any>(
                 as PluralAttribute<in P, *, C>
 
         // Append list join to path
-        val childSourcePath = QueryJoinPath.CollectionPath<E, P, C>(
+        val childSourcePath = QueryJoinPath.CollectionPath(
             parent = parentSourcePath,
             child = childAttribute,
             joinType = JoinType.INNER
@@ -171,7 +171,7 @@ internal class QueryNodeFactory<E : Any>(
 
         // SELECT <...primaryKey>, <...parentForeignKey>, <...column>
         val selection = selectPrimaryKeys + selectParentKeys + selectColumns + selectAdditional
-        query.multiselect(selection.distinct())
+        query.select(builder.tuple(selection.distinct()))
 
         // Only query child rows within the scope of the parent row, determined by the parent's primary key.
         // WHERE <fk> IN (:parentPkValues)
@@ -250,7 +250,7 @@ internal class QueryNodeFactory<E : Any>(
         val selection =
             selectKeyPrimaryKeys + selectValuePrimaryKeys + selectForeignKeys + selectColumns + selectAdditional
 
-        query.multiselect(selection.distinct())
+        query.select(builder.tuple(selection.distinct()))
 
         // Only query child rows within the scope of the parent row, determined by the parent's primary key.
         // The primary key column's field name is used as a parameter name, see FieldsetQueryNode.execute()

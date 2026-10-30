@@ -1,6 +1,7 @@
 package de.kiwi.framework.application.authz
 
 import de.kiwi.api.domain.*
+import de.kiwi.api.util.joinIncludingSubtypes
 import jakarta.persistence.criteria.*
 import jakarta.persistence.metamodel.SingularAttribute
 
@@ -133,6 +134,6 @@ private class CriteriaAccessControlContext(
             ?.correlationParent?.joins
             ?.find { (it.attribute.name == attributeName) && (it.joinType == joinType) }
             ?.let { accessControlSubquery.correlate(it as Join<X, Y>) }
-            ?: this.join(attributeName, joinType)
+            ?: this.joinIncludingSubtypes(attributeName, joinType)
     }
 }

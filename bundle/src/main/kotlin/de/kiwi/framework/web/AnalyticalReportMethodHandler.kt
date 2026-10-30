@@ -1,8 +1,8 @@
 package de.kiwi.framework.web
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.exc.MismatchedInputException
-import com.fasterxml.jackson.module.kotlin.readValue
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.exc.MismatchedInputException
+import tools.jackson.module.kotlin.readValue
 import de.kiwi.api.application.query.QueryBus
 import de.kiwi.api.application.service.UserDescriptorProvider
 import de.kiwi.api.domain.EntityMismatchedInput
@@ -10,13 +10,11 @@ import de.kiwi.api.olap.AnalyticalReportQuery
 import de.kiwi.api.olap.Slice
 import de.kiwi.api.util.splitMultiValueParameters
 import de.kiwi.framework.application.olap.AnalyticalReportProvider
-import org.springframework.stereotype.Component
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.util.MultiValueMap
 import org.springframework.web.servlet.function.ServerRequest
 import org.springframework.web.servlet.function.ServerResponse
 
-@Component
 class AnalyticalReportMethodHandler(
     private val queryBus: QueryBus,
     private val objectMapper: ObjectMapper,
@@ -28,8 +26,8 @@ class AnalyticalReportMethodHandler(
         val userDescriptor = userDescriptorProvider.currentUser()
 
         val requestParams = request.params()
-        val dimensions = requestParams.getOrDefault("_dimensions", emptyList())?.toSet() ?: emptySet<String>()
-        val metrics = requestParams.getOrDefault("_metrics", emptyList())?.toSet() ?: emptySet<String>()
+        val dimensions = requestParams.getOrDefault("_dimensions", emptyList()).toSet()
+        val metrics = requestParams.getOrDefault("_metrics", emptyList()).toSet()
         val slices = LinkedMultiValueMap(requestParams)
 
         val sort = paginationResolver.resolvePagination(request).sort

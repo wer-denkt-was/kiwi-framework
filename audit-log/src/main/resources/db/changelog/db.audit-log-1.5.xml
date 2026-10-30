@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd"
+                   objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+    <!--
+    Kiwi 1.5: Event details are stored as JSON, instead of format-agnostic binary data.
+    The binary event details have always been UTF-8 encoded JSON, written by the Jackson AuditableDetailsSerializer.
+    Migration: Copy the details into a temporary JSON column, drop the binary column, then rename the JSON column.
+    -->
+
+    <!-- MySQL/MariaDB: DDL is not transactional, so invalid details are rejected before modifying the table -->
+    <changeSet id="fix_kiwi_audit_log_event_details_json_column_mysql" author="dahmen" dbms="mysql,mariadb">
+        <preConditions onFail="HALT" onError="HALT"
+                       onFailMessage="kiwi_audit_log.event_details contains rows that are not valid UTF-8 JSON, which must be fixed before migrating to a JSON column">
+            <sqlCheck expectedResult="0">
+                select count(*)
+                from kiwi_audit_log
+                where not json_valid(convert(event_details using utf8mb4))
+            </sqlCheck>
+        </preConditions>
+
+        <!-- language=mysql -->
+        <sql dbms="mysql,mariadb">
+            alter table kiwi_audit_log
+                add column __tmp_event_details json null;
+
+            update kiwi_audit_log
+            set __tmp_event_details = convert(event_details using utf8mb4)
+            where __tmp_event_details is null;
+
+            alter table kiwi_audit_log
+                drop column event_details;
+
+            alter table kiwi_audit_log
+                change column __tmp_event_details event_details json not null;
+        </sql>
+    </changeSet>
+
+    <!-- PostgreSQL: DDL is transactional, so the change set is rolled back entirely if any details are invalid -->
+    <changeSet id="fix_kiwi_audit_log_event_details_json_column_postgresql" author="dahmen" dbms="postgresql">
+        <!-- language=postgresql -->
+        <sql dbms="postgresql">
+            alter table kiwi_audit_log
+                add column __tmp_event_details jsonb null;
+
+            update kiwi_audit_log
+            set __tmp_event_details = convert_from(event_details, 'UTF8')::jsonb
+            where __tmp_event_details is null;
+
+            alter table kiwi_audit_log
+                drop column event_details;
+
+            alter table kiwi_audit_log
+                rename column __tmp_event_details to event_details;
+
+            alter table kiwi_audit_log
+                alter column event_details set not null;
+        </sql>
+    </changeSet>
+</databaseChangeLog>

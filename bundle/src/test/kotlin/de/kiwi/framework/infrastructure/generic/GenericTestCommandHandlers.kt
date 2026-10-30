@@ -10,20 +10,19 @@ import org.springframework.stereotype.Component
 
 @Component
 class CreatePublisherHandler : GenericCreateHandler<CreatePublisher, Publisher>() {
-    override fun createEntity(create: CreateBody, user: UserDescriptor) = DomainResult.of(
+    override fun createEntity(create: CreatePublisher, user: UserDescriptor) = DomainResult.of(
         Publisher(
             id = EntityId.generate<PublisherId>(),
-            name = create.require(PublisherSchema.name),
-            contact = create.require(PublisherSchema.contact),
+            name = create.name,
+            contact = create.contact,
         )
     )
 }
 
 @Component
 class UpdatePublisherHandler : GenericUpdateHandler<UpdatePublisher, Publisher>() {
-    override fun updateEntity(update: UpdateBody, entity: Publisher, user: UserDescriptor): DomainResult<*> {
-        update.patchField(PublisherSchema.name)
-        update.patchField(PublisherSchema.contact)
+    override fun updateEntity(update: UpdatePublisher, entity: Publisher, user: UserDescriptor): DomainResult<*> {
+        update.patchFields(entity, update::name, update::contact)
         return DomainResult.empty
     }
 }

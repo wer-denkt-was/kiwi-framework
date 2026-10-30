@@ -1,18 +1,22 @@
 package de.kiwi.framework.application.authz
 
 import de.kiwi.api.domain.AccessControl
+import de.kiwi.api.domain.childAccess
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.hamcrest.Matchers.*
 import org.hamcrest.MatcherAssert.assertThat
 
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
-import org.springframework.boot.autoconfigure.domain.EntityScan
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.springframework.boot.persistence.autoconfigure.EntityScan
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
+import org.springframework.data.jpa.domain.PredicateSpecification
+import org.springframework.data.jpa.domain.Specification
 
 /**
  * This test needs to run within an active JPA Hibernate context
@@ -140,6 +144,38 @@ class CriteriaAccessControlTest {
 
         assertThat(findAllParents(), containsInAnyOrder(testParent1, testParent2))
         assertThat(findAllChildren(), containsInAnyOrder(testChild1a, testChild1b, testChild2a))
+    }
+
+    @Test
+    fun `predicate specification is lifted into child access subquery`() {
+        grantAccess(
+            TestAccess(user = testUser, granted = testParent1, allowChildren = false),
+            TestAccess(user = testUser, granted = testParent2, allowChildren = false),
+        )
+
+        // The parent access-control is applied within a subquery of the child access-control
+        val onlyParent1 = PredicateSpecification<TestParent> { from, builder ->
+            builder.equal(from[TestParent_.id], testParent1.id)
+        }
+        val restrictedParentAccess = testParentAccess and onlyParent1
+        val restrictedChildAccess = restrictedParentAccess.childAccess<TestParent, TestChild> { parent, child ->
+            equal(child[TestChild_.parent], parent)
+        }
+
+        assertThat(findAll(restrictedParentAccess), containsInAnyOrder(testParent1))
+        assertThat(findAll(restrictedChildAccess), containsInAnyOrder(testChild1a, testChild1b))
+    }
+
+    @Test
+    fun `plain specification is rejected within child access subquery`() {
+        val onlyParent1 = Specification<TestParent> { root, _, builder ->
+            builder.equal(root[TestParent_.id], testParent1.id)
+        }
+        val restrictedChildAccess = (testParentAccess and onlyParent1).childAccess<TestParent, TestChild> { parent, child ->
+            equal(child[TestChild_.parent], parent)
+        }
+
+        assertThrows<IllegalStateException> { findAll(restrictedChildAccess) }
     }
 
     // --- Internal ---

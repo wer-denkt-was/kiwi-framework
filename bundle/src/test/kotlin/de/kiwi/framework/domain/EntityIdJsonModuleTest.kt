@@ -1,8 +1,8 @@
 package de.kiwi.framework.domain
 
-import com.fasterxml.jackson.databind.JsonMappingException
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
+import tools.jackson.databind.DatabindException
+import tools.jackson.module.kotlin.jacksonMapperBuilder
+import tools.jackson.module.kotlin.readValue
 import de.kiwi.api.domain.EntityId
 import de.kiwi.api.domain.EntityIdJsonModule
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -12,9 +12,9 @@ import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
 
 class EntityIdJsonModuleTest {
-    private val json = jacksonObjectMapper().apply {
-        registerModule(EntityIdJsonModule())
-    }
+    private val json = jacksonMapperBuilder()
+        .addModule(EntityIdJsonModule())
+        .build()
 
     class FirstId(value: Long) : EntityId(value)
     class SecondId(value: Long) : EntityId(value)
@@ -49,7 +49,7 @@ class EntityIdJsonModuleTest {
         // language=json
         val invalid = """{ "first": "Not a valid EntityId!", "second": "" }"""
 
-        val exception = assertThrows<JsonMappingException> { json.readValue<TestObject>(invalid) }
+        val exception = assertThrows<DatabindException> { json.readValue<TestObject>(invalid) }
         println(exception.message)
     }
 }

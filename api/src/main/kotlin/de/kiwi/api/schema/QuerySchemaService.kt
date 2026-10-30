@@ -1,6 +1,6 @@
 package de.kiwi.api.schema
 
-import com.fasterxml.jackson.databind.JsonNode
+import tools.jackson.databind.JsonNode
 import de.kiwi.api.domain.UserDescriptor
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -103,7 +103,7 @@ interface QuerySchemaService {
      * The data of the entities is represented according to the given [Fieldset],
      * serialized using the given [FieldsetSerializer].
      */
-    fun <E : Any, N> findPage(
+    fun <E : Any, N : Any> findPage(
         fieldset: Fieldset<E>,
         specification: Specification<E>,
         serializer: FieldsetSerializer<N>,

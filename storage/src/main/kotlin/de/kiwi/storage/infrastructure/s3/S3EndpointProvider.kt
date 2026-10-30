@@ -16,34 +16,58 @@ interface S3EndpointProvider {
     )
 }
 
-class SubdomainS3EndpointProvider(private val props: KiwiStorageProperties.S3Properties) : S3EndpointProvider {
-    private val hostnameEscape = props.hostname
-        .replace("\\", "\\\\")
-        .replace(".", "\\.")
-        .replace("*", "\\*")
+/** `true` if the configured S3 hostname is the one of AWS, e.g. `amazonaws.com` */
+internal val KiwiStorageProperties.S3Properties.isAwsHostname: Boolean
+    get() = hostname.equals("amazonaws.com", ignoreCase = true) || hostname.equals("amazonaws.com.cn", ignoreCase = true)
 
-    private val bucketHostnameRegex = """^(?<bucket>.*)\.s3\.(?<region>.*)\.$hostnameEscape$"""
+/**
+ * Endpoint URL of the S3 client: `null` for AWS, which resolves the regional endpoint `s3.{region}.amazonaws.com`
+ * itself, otherwise `{scheme}://{hostname}`.
+ */
+internal fun KiwiStorageProperties.S3Properties.clientEndpointUrl(): String? =
+    if (isAwsHostname) null else "$scheme://$hostname"
+
+/**
+ * Object URIs with the bucket in the hostname, matching the hosts the S3 client sends requests to:
+ * `{bucket}.s3.{region}.amazonaws.com` for AWS, and `{bucket}.{hostname}` for other S3 providers.
+ */
+class SubdomainS3EndpointProvider(private val props: KiwiStorageProperties.S3Properties) : S3EndpointProvider {
+    private val hostnameEscape = Regex.escape(props.hostname)
+
+    // "{bucket}.s3.{region}.{hostname}", the format of AWS (and of non-AWS object URIs before Kiwi 1.5)
+    private val regionalBucketHostnameRegex = """^(?<bucket>.*)\.s3\.(?<region>.*)\.$hostnameEscape$"""
+        .toRegex(RegexOption.IGNORE_CASE)
+
+    // "{bucket}.{hostname}", the format of other S3 providers
+    private val bucketHostnameRegex = """^(?<bucket>.*)\.$hostnameEscape$"""
         .toRegex(RegexOption.IGNORE_CASE)
 
     override fun objectEndpoint(info: S3EndpointProvider.S3ObjectInfo): URI {
         val (region, bucket, key) = info
-        val host = "$bucket.s3.$region.${props.hostname}"
+        val host = if (props.isAwsHostname) "$bucket.s3.$region.${props.hostname}" else "$bucket.${props.hostname}"
         val path = "/$key"
         return URI(props.scheme, host, path, null, null)
     }
 
     override fun objectUriInfo(objectUri: URI): S3EndpointProvider.S3ObjectInfo {
         val key = objectUri.path.trimStart('/')
-        val match = objectUri.host
-            ?.let { bucketHostnameRegex.matchEntire(it) }
-            ?: throw InvalidS3UriException(objectUri.toString())
+        val host = objectUri.host ?: throw InvalidS3UriException(objectUri.toString())
 
-        val bucket = match.groups["bucket"]!!.value
-        val region = match.groups["region"]!!.value
+        regionalBucketHostnameRegex.matchEntire(host)?.let { match ->
+            return S3EndpointProvider.S3ObjectInfo(
+                region = match.groups["region"]!!.value,
+                bucket = match.groups["bucket"]!!.value,
+                key = key,
+            )
+        }
+
+        val match = bucketHostnameRegex.matchEntire(host)
+            ?.takeUnless { props.isAwsHostname }
+            ?: throw InvalidS3UriException(objectUri.toString())
         return S3EndpointProvider.S3ObjectInfo(
-            region = region,
-            bucket = bucket,
-            key = key
+            region = props.region,
+            bucket = match.groups["bucket"]!!.value,
+            key = key,
         )
     }
 }

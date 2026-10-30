@@ -28,12 +28,16 @@ internal class QuerySchemaEngine<E : Any, N>(
         return found.firstOrNull()
     }
 
-    fun findPage(
+    /**
+     * Query all items matching the given [specification], limited by the given [pagination] if paged.
+     * The [totalLimit] is a hard cap on all items, i.e. pages are windows within the first [totalLimit] items.
+     */
+    fun findItems(
         specification: Specification<E>,
         pagination: Pageable,
         sort: Sort,
         totalLimit: Long?,
-    ): Page<N> {
+    ): List<N> {
         // Choose sort by priority: Sort parameter, Pagination sort property, EntitySchema default sort, or unsorted
         val actualSort = sort.takeIf { it.isSorted }
             ?: pagination.sort.takeIf { it.isSorted }
@@ -42,25 +46,34 @@ internal class QuerySchemaEngine<E : Any, N>(
 
         // Create root query node for sort/specification/limit
         val queryNode = queryNodeFactory.createRootQuery(specification, actualSort)
-        totalLimit?.let { queryNode.totalLimit(it) }
 
-        // Execute root query, either paginated or with all items
-        return if (pagination.isUnpaged) queryNode.executeUnpaginated()
-        else queryNode.executeWithPagination(specification, pagination)
+        // Execute root query, either paginated or with all items, capped by the total limit
+        queryNode.limit(pagination, totalLimit)
+        return queryNode.execute(serializer, user)
     }
 
-    private fun RootQueryNode.executeUnpaginated(): Page<N> {
-        val items = execute(serializer, user)
-        return PageImpl(items)
+    /**
+     * Count all items matching the given [specification], capped by the given [totalLimit].
+     */
+    fun queryTotalCount(specification: Specification<E>, totalLimit: Long? = null): Long {
+        val totalCount = queryNodeFactory.queryTotalCount(specification)
+        return if (totalLimit == null) totalCount else minOf(totalCount, totalLimit.coerceAtLeast(0))
     }
+}
 
-    private fun RootQueryNode.executeWithPagination(specification: Specification<E>, pagination: Pageable): Page<N> {
-        limitAndOffset(pagination)
-        val items = execute(serializer, user)
-        return PageableExecutionUtils.getPage(items, pagination) {
-            queryNodeFactory.queryTotalCount(specification)
-        }
-    }
+/**
+ * Query a [Page] of items matching the given [specification].
+ * Defined as an extension, since Spring Data [Page] requires a non-nullable item type [N].
+ */
+internal fun <E : Any, N : Any> QuerySchemaEngine<E, N>.findPage(
+    specification: Specification<E>,
+    pagination: Pageable,
+    sort: Sort,
+    totalLimit: Long?,
+): Page<N> {
+    val items = findItems(specification, pagination, sort, totalLimit)
+    return if (pagination.isUnpaged) PageImpl(items)
+    else PageableExecutionUtils.getPage(items, pagination) { queryTotalCount(specification, totalLimit) }
 }
 
 private val Fieldset<*>.defaultSort

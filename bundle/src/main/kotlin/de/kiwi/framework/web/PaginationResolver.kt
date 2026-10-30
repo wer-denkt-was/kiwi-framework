@@ -23,11 +23,8 @@ class PaginationResolver(private val props: KiwiFrameworkProperties.PaginationPr
         val sort = sortParams.takeIf { it.isNotEmpty() }?.let { createSort(it) } ?: Sort.unsorted()
         val pageable = createPageable(page, size)
 
-        return when {
-            sort.isUnsorted -> pageable
-            pageable.isPaged -> PageRequest.of(page, size, sort)
-            else -> Pageable.unpaged(sort)
-        }
+        return if (sort.isUnsorted) pageable
+        else PageRequest.of(pageable.pageNumber, pageable.pageSize, sort)
     }
 
     private fun createPageable(pageValue: Int, sizeValue: Int): Pageable {

@@ -1,0 +1,6 @@
+de.kiwi.framework.KiwiFrameworkAutoConfiguration
+de.kiwi.framework.infrastructure.bus.KiwiBusAutoConfiguration
+de.kiwi.framework.infrastructure.mail.KiwiMailAutoConfiguration
+de.kiwi.framework.web.KiwiWebAutoConfiguration
+de.kiwi.framework.web.KiwiOpenApiAutoConfiguration
+de.kiwi.framework.web.KiwiManagementSecurityAutoConfiguration

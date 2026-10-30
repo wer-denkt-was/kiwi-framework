@@ -1,16 +1,26 @@
 package de.kiwi.api.schema
 
-import com.fasterxml.jackson.databind.JsonNode
 import de.kiwi.api.domain.Auditable
 import de.kiwi.api.domain.DetailsProvider
 import de.kiwi.api.domain.DomainException
 import de.kiwi.api.domain.UserDescriptor
+import tools.jackson.databind.JsonNode
 import java.util.*
 import kotlin.properties.PropertyDelegateProvider
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.typeOf
+
+/**
+ * Abstraction for producing JSON details from a given value.
+ * Specialization of [DetailsProvider], returning the [JsonNode] as `Any?` result details.
+ */
+fun interface JsonDetailsProvider<T : Any> : DetailsProvider<T> {
+    fun toJsonDetails(value: T, user: UserDescriptor?): JsonNode
+
+    override fun toDetails(value: T, user: UserDescriptor?): Any? = toJsonDetails(value, user)
+}
 
 // --- Fieldset types ---
 
@@ -20,7 +30,7 @@ import kotlin.reflect.typeOf
  * specified by an [AbstractSchema], most commonly an [EntitySchema], of entity type [E].
  * @param E Target type of this fieldset
  */
-sealed interface Fieldset<E : Any> : DetailsProvider<E> {
+sealed interface Fieldset<E : Any> : DetailsProvider<E>, JsonDetailsProvider<E> {
     /** Name of this fieldset */
     val name: String
 
@@ -47,16 +57,18 @@ sealed interface Fieldset<E : Any> : DetailsProvider<E> {
 
     /**
      * Implementation of [DetailsProvider], making a fieldset usable as an entity-details provider.
-     * The [UserDescriptor] used for extraction will be obtained using the default [de.kiwi.api.application.service.UserDescriptorProvider].
+     * If the given [user] is `null`, the [UserDescriptor] used for extraction will be obtained using
+     * the [de.kiwi.api.application.service.UserDescriptorProvider.Global] instance.
      */
-    override fun toDetails(value: E) = extract(value)
-}
+    override fun toDetails(value: E, user: UserDescriptor?): Any? = extract(value, user)
 
-/**
- * Extension property creating an implementation of [DetailsProvider] using [Fieldset.extractJson] for serialization.
- * The [UserDescriptor] used for extraction will be obtained using the default [de.kiwi.api.application.service.UserDescriptorProvider].
- */
-val <E : Any> Fieldset<E>.jsonDetails get() = DetailsProvider<E> { extractJson(it) }
+    /**
+     * Implementation of [JsonDetailsProvider], making a fieldset usable as an entity JSON-details provider.
+     * If the given [user] is `null`, the [UserDescriptor] used for extraction will be obtained using
+     * the [de.kiwi.api.application.service.UserDescriptorProvider.Global] instance.
+     */
+    override fun toJsonDetails(value: E, user: UserDescriptor?): JsonNode = extractJson(value, user)
+}
 
 /**
  * Pair of two fieldsets used for associating keys and values of [ToManyMapField].
@@ -219,8 +231,9 @@ abstract class FieldsetsAvailable<E : Any>(
 
     /**
      * Get the fieldset with the given name ignoring case,
-     * or the [default] fieldset if no fieldset with the given name exists.
+     * or throws [NoSuchFieldset]  if no fieldset with the given name exists.
      */
+    @Throws(NoSuchFieldset::class)
     fun require(name: String): Fieldset<E> {
         return get(name) ?: throw NoSuchFieldset(name, fieldsetsByLowercaseName.keys)
     }
@@ -329,7 +342,7 @@ abstract class FieldsetsAvailable<E : Any>(
 data class NoSuchFieldset(val name: String, val availableFieldsets: Set<String>) : DomainException(
     status = Status.BadRequest,
     code = "no-such-fieldset",
-    args = mapOf("name" to name, "availableFieldsets" to availableFieldsets.toList())
+    args = mapOf("name" to name, "availableFieldsets" to availableFieldsets.toList()),
 ) {
     override val severity = Auditable.Severity.Disabled // don't audit log
 }

@@ -2,13 +2,11 @@ package de.kiwi.framework.web
 
 import de.kiwi.framework.KiwiFrameworkProperties
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.servlet.config.annotation.CorsRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
-@Configuration
-@EnableConfigurationProperties(KiwiFrameworkProperties::class)
+@Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty("kiwi.web.global-cors.enabled", matchIfMissing = false)
 class KiwiGlobalCorsConfig(private val props: KiwiFrameworkProperties) : WebMvcConfigurer {
 

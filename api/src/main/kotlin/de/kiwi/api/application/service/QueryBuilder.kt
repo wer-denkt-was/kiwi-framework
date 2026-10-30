@@ -1,6 +1,6 @@
 package de.kiwi.api.application.service
 
-import com.fasterxml.jackson.databind.JsonNode
+import tools.jackson.databind.JsonNode
 import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.api.schema.EntityFieldset
 import org.springframework.data.domain.Page
@@ -20,7 +20,7 @@ interface QueryBuilder {
         fun sort(sort: Sort): Select<E>
     }
 
-    interface Executor<R> {
+    interface Executor<R : Any> {
         fun page(pagination: Pageable, user: UserDescriptor? = null): Page<R>
         fun all(user: UserDescriptor? = null): List<R>
         fun single(user: UserDescriptor? = null): R?

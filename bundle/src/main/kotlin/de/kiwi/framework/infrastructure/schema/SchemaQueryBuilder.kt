@@ -1,6 +1,6 @@
 package de.kiwi.framework.infrastructure.schema
 
-import com.fasterxml.jackson.databind.JsonNode
+import tools.jackson.databind.JsonNode
 import de.kiwi.api.application.service.QueryBuilder
 import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.api.schema.EntityFieldset

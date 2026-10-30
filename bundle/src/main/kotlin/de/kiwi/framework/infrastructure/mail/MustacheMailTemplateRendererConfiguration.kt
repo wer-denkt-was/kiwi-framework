@@ -5,15 +5,17 @@ import de.kiwi.framework.KiwiFrameworkProperties
 import de.kiwi.framework.infrastructure.mail.template.MustacheMailTemplateRenderer
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @ConditionalOnClass(name = ["com.samskivert.mustache.Mustache"])
 class MustacheMailTemplateRendererConfiguration(
     private val props: KiwiFrameworkProperties,
 ) {
     @Bean
+    @ConditionalOnMissingBean
     fun mustacheMailTemplateRenderer(
         compilerProvider: ObjectProvider<Mustache.Compiler>,
     ): MustacheMailTemplateRenderer {

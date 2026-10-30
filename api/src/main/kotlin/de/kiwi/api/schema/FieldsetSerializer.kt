@@ -1,11 +1,10 @@
 package de.kiwi.api.schema
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.ArrayNode
-import com.fasterxml.jackson.databind.node.JsonNodeCreator
-import com.fasterxml.jackson.databind.node.JsonNodeFactory
-import com.fasterxml.jackson.databind.node.ObjectNode
-import de.kiwi.api.domain.UserDescriptor
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.ArrayNode
+import tools.jackson.databind.node.JsonNodeCreator
+import tools.jackson.databind.node.JsonNodeFactory
+import tools.jackson.databind.node.ObjectNode
 import java.math.BigDecimal
 import java.math.BigInteger
 
@@ -143,7 +142,7 @@ object JsonFieldsetSerializer : FieldsetSerializer<JsonNode> {
         is JsonNode -> value
         // Otherwise, wrap value into the most appropriate JsonNode
         null -> nodes.nullNode()
-        is String -> nodes.textNode(value)
+        is String -> nodes.stringNode(value)
         is Boolean -> nodes.booleanNode(value)
         is Int -> nodes.numberNode(value)
         is Long -> nodes.numberNode(value)

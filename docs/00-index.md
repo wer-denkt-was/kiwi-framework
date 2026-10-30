@@ -15,21 +15,26 @@ follow along.
 
 ## Table of Contents
 
-1. [Introduction](./01-introduction.md): Getting started, architecture, and set up a new project
-2. [Domain and Schema](./02-domain-schema.md): Defining domain entities, a schema, and access-control
-3. [Application Commands and Queries](./03-application-command-query.md): Defining application use-cases with commands,
-   queries and events
-4. [Querying and Access Control](./04-querying-access-control.md): Defining access-control, field-access-control, and
-   how database querying works using query-schemas
-5. [Infrastructure and Integrations](./05-infrastructure-integration.md): Service implementations, external
-   integrations, and application configuration
-6. [Web MVC and Endpoints](./06-web-mvc-endpoints.md): Spring Web MVC, REST Controllers, and HTTP endpoints
-7. [Unit- and Integration Testing](./07-testing.md): Testing the application, and generating fieldset sources
-8. [Advanced](./08-advanced.md): In-depth topics, elaborating on the internals and more advanced features
+1. [Introduction](./01-introduction.md): Requirements, framework modules, application architecture, and setting up a
+   new project
+2. [Domain Entities and Schema](./02-domain-schema.md): Defining domain entities, database migrations, entity schemas,
+   fieldsets, and validation
+3. [Application Commands, Queries and Events](./03-application-command-query.md): Defining application use-cases with
+   commands, queries and events, their handlers, and the command-, query- and event-bus
+4. [Database Querying and Access-Control](./04-querying-access-control.md): How database querying works using query
+   schemas, filters and analytical reports, and how to define access-control and field-access-control
+5. [Infrastructure and Integration](./05-infrastructure-integration.md): Auto-configuration and configuration
+   properties, Spring Security integration, e-mails, file storage, and the audit-log
+6. [Web MVC and Endpoints](./06-web-mvc-endpoints.md): Spring Web MVC controllers, exception handling, generic entity
+   and report endpoints, and OpenAPI documentation
+7. [Testing and Frontend Code-Generation](./07-testing.md): Unit-, slice- and integration-testing the application,
+   command- and query-verification, and generating fieldset sources for frontends
+8. [Advanced Features](./08-advanced.md): In-depth topics, elaborating on the internals and more advanced features
 9. [Troubleshooting](./09-troubleshooting.md): Resolving known issues in development and deployment
-10. [Appendix](./99-appendix.md): Additional material, diagrams and resources
+10. [Migrating to Kiwi 1.5](./98-migration-1.5.md): Changes required when upgrading an application from Kiwi 1.4
+11. [Appendix](./99-appendix.md): Glossary, Snowflake IDs, diagrams, and the example application project
 
 ---
 
-&copy; werdenktwas GmbH, 2024-2025  
+&copy; werdenktwas GmbH, 2024-2026  
 Alexander Dahmen [&lt;dahmen@werdenktwas.de&gt;](mailto:dahmen@werdenktwas.de)

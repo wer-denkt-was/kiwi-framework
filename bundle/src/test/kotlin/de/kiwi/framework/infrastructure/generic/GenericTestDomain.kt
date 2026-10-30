@@ -106,7 +106,13 @@ class Book(
     title = title,
     description = description,
     firstPublishedOn = firstPublishedOn,
-)
+) {
+    /** Plural attribute declared on a subtype */
+    @ElementCollection
+    @CollectionTable(name = "book_keyword", joinColumns = [JoinColumn(name = "book_id")])
+    @Column(name = "keyword", length = 255)
+    val keywords: MutableSet<String> = HashSet()
+}
 
 enum class BookType {
     Paperback,

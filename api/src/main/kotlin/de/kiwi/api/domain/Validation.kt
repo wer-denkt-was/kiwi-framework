@@ -28,7 +28,7 @@ fun interface Validation<T> {
 
     /**
      * Apply the validation to the given value and return the validated result value if the validation succeeds,
-     * or throw an [IllegalArgumentException] with the failure reason as exception message if validation fails.
+     * or throw an [ValidationFailed] with the failure reason as exception message if validation fails.
      */
     operator fun invoke(value: T): T =
         validate(value).getOrElse { throw ValidationFailed(this, it, value) }

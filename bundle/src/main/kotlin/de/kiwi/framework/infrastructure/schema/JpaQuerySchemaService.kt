@@ -5,6 +5,7 @@ import de.kiwi.api.schema.Fieldset
 import de.kiwi.api.schema.FieldsetSerializer
 import de.kiwi.api.schema.QuerySchemaService
 import de.kiwi.framework.infrastructure.schema.engine.QuerySchemaEngine
+import de.kiwi.framework.infrastructure.schema.engine.findPage
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
 import jakarta.persistence.criteria.CriteriaBuilder
@@ -72,10 +73,9 @@ class JpaQuerySchemaService : QuerySchemaService {
         user: UserDescriptor?,
     ): List<N> =
         QuerySchemaEngine(fieldset, serializer, entityManager, user)
-            .findPage(specification, Pageable.unpaged(), sort, totalLimit)
-            .content
+            .findItems(specification, Pageable.unpaged(), sort, totalLimit)
 
-    override fun <E : Any, N> findPage(
+    override fun <E : Any, N : Any> findPage(
         fieldset: Fieldset<E>,
         specification: Specification<E>,
         serializer: FieldsetSerializer<N>,

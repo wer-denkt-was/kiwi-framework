@@ -42,4 +42,13 @@ class MultiValueMapParametersTest {
         println("actual   = $actual")
         assertEquals(expected, actual)
     }
+
+    @Test
+    fun splitWithEscapeKeepsTrailingEscapeInLastToken() {
+        assertEquals(listOf("abc\\"), "abc\\".splitWithEscape())
+        assertEquals(listOf("foo", "bar\\"), "foo,bar\\".splitWithEscape())
+        assertEquals(listOf("foo,bar\\"), "foo\\,bar\\".splitWithEscape())
+        assertEquals(listOf("\\"), "\\".splitWithEscape())
+        assertEquals(listOf("foo", "\\"), "foo,\\".splitWithEscape())
+    }
 }

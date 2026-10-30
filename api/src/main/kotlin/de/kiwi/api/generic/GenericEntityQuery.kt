@@ -1,6 +1,6 @@
 package de.kiwi.api.generic
 
-import com.fasterxml.jackson.databind.JsonNode
+import tools.jackson.databind.JsonNode
 import de.kiwi.api.domain.*
 import de.kiwi.api.schema.Fieldset
 import de.kiwi.api.util.where

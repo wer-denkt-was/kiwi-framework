@@ -1,8 +1,8 @@
 package de.kiwi.storage
 
-import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.autoconfigure.domain.EntityScan
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.springframework.boot.SpringBootConfiguration
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.test.context.ActiveProfiles
 
 @MustBeDocumented
@@ -19,7 +19,10 @@ import org.springframework.test.context.ActiveProfiles
 )
 annotation class StorageDataJpaTest
 
-@SpringBootApplication(scanBasePackages = ["de.kiwi.storage"])
-@EntityScan(basePackages = ["de.kiwi.storage.domain"])
+/**
+ * Test application relying on the Kiwi storage auto-configuration, without component scanning.
+ */
+@SpringBootConfiguration
+@EnableAutoConfiguration
 @ActiveProfiles("storage-test")
 class StorageTestApplication

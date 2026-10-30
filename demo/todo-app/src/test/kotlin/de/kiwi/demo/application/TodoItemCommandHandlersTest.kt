@@ -1,8 +1,9 @@
 package de.kiwi.demo.application
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.api.generic.EntityUpdated
+import de.kiwi.api.generic.GenericBodyCommand
 import de.kiwi.api.util.find
 import de.kiwi.demo.domain.*
 import de.kiwi.demo.domain.command.*
@@ -57,15 +58,15 @@ class TodoItemCommandHandlersTest {
         val list = prepareTodoList(title = "new list", user = alice)
 
         val command = CreateTodoItem().apply {
-            jsonBody = json(
+            bindJson(
                 """{
                 |  "title": "new item",
                 |  "content": "this is a create test item",
-                |  "listId": "${list.id}"
+                |  "list": "${list.id}"
                 |}""".trimMargin()
             )
         }
-        val events = tx { createTodoItemHandler.handle(command, user = alice) } ?: fail("missing events")
+        val events = tx { createTodoItemHandler.handle(command, user = alice) }
 
         val created = events.findByType<TodoItemCreated>() ?: fail("missing CreateTodoItem")
         assertEquals(list.id, created.todoItem.todoList.id)
@@ -82,9 +83,9 @@ class TodoItemCommandHandlersTest {
 
         val command = UpdateTodoItem().apply {
             entityId = originalItem.id
-            jsonBody = json("""{ "title": "new title!", "content": "new content!", "status": "Done" }""")
+            bindJson("""{ "title": "new title!", "content": "new content!", "status": "Done" }""")
         }
-        val events = tx { updateTodoItemHandler.handle(command, user = alice) } ?: fail("missing events")
+        val events = tx { updateTodoItemHandler.handle(command, user = alice) }
 
         val updatedEvent = events.findByType<EntityUpdated>() ?: fail("missing EntityUpdated")
         assertEquals(originalItem.id, updatedEvent.entityId)
@@ -116,9 +117,9 @@ class TodoItemCommandHandlersTest {
         // Update order of item B
         val command = UpdateTodoItem().apply {
             entityId = itemB.id
-            jsonBody = json("""{ "order": 2 }""")
+            bindJson("""{ "order": 2 }""")
         }
-        val events = tx { updateTodoItemHandler.handle(command, user = alice) } ?: fail("missing events")
+        val events = tx { updateTodoItemHandler.handle(command, user = alice) }
         entityManager.flush()
 
         val orderChanged = events.findByType<TodoListReordered>() ?: fail("missing TodoListReordered")
@@ -153,7 +154,7 @@ class TodoItemCommandHandlersTest {
             itemId = itemY.id,
             targetListId = listB.id,
         )
-        val events = tx { moveTodoItemToListHandler.handle(command, user = alice) } ?: fail("missing events")
+        val events = tx { moveTodoItemToListHandler.handle(command, user = alice) }
         entityManager.flush()
 
         val itemMoved = events.findByType<TodoItemMovedToList>() ?: fail("missing TodoItemMovedToList")
@@ -174,7 +175,7 @@ class TodoItemCommandHandlersTest {
         val command = DeleteTodoItem().apply {
             entityId = item.id
         }
-        val events = tx { deleteTodoItemHandler.handle(command, user = alice) } ?: fail("missing events")
+        val events = tx { deleteTodoItemHandler.handle(command, user = alice) }
 
         val deleted = events.findByType<TodoItemDeleted>() ?: fail("missing TodoItemDeleted")
         assertEquals(item.id, deleted.todoItem.id)
@@ -196,6 +197,8 @@ class TodoItemCommandHandlersTest {
     // --- Utilities ---
 
     private fun json(@Language("JSON") json: String) = objectMapper.readTree(json)
+
+    private fun GenericBodyCommand<*>.bindJson(@Language("JSON") json: String) = bind(json(json), objectMapper)
 
     private fun <T> tx(action: () -> T) = transactions.execute { action() }
 

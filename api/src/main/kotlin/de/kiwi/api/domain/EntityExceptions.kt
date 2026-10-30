@@ -50,6 +50,30 @@ data class EntityFieldInvalid(val entityType: Class<*>, val fieldName: String, v
     override val severity = Auditable.Severity.Disabled
 }
 
+/** Exception thrown when a request body contains a field that is not declared by the command. */
+data class EntityFieldUnknown(val entityType: Class<*>, val fieldName: String) : DomainException(
+    status = Status.BadRequest,
+    code = "entity-field-unknown",
+    args = mapOf("entityType" to entityType.name, "fieldName" to fieldName),
+) {
+    override val severity = Auditable.Severity.Disabled
+}
+
+/**
+ * Exception thrown when the request body of a generic command could not be bound,
+ * listing all field [errors] (e.g. [EntityFieldMissingValue], [EntityFieldInvalid], [EntityFieldUnknown]).
+ */
+data class EntityBodyInvalid(val entityType: Class<*>, val errors: List<DomainException>) : DomainException(
+    status = Status.BadRequest,
+    code = "entity-body-invalid",
+    args = mapOf(
+        "entityType" to entityType.name,
+        "errors" to errors.map { mapOf("code" to it.code, "args" to it.args) },
+    ),
+) {
+    override val severity = Auditable.Severity.Disabled
+}
+
 /** Exception thrown when an entity could not be created due to mismatched/missing fields. */
 data class EntityMismatchedInput(val entityType: Class<*>, val mismatchedFields: List<String>) : DomainException(
     status = Status.BadRequest,

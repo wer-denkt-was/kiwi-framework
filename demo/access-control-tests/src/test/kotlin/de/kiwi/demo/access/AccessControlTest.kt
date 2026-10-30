@@ -1,19 +1,23 @@
 package de.kiwi.demo.access
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.module.kotlin.jacksonObjectMapper
 import com.samskivert.mustache.Mustache
 import de.kiwi.api.application.service.UserDescriptorProvider
 import de.kiwi.api.domain.UserDescriptor
-import de.kiwi.auditLog.KiwiAuditLogConfiguration
-import de.kiwi.framework.KiwiFrameworkConfiguration
+import de.kiwi.auditlog.KiwiAuditLogAutoConfiguration
+import de.kiwi.auditlog.KiwiAuditLogPackagesAutoConfiguration
+import de.kiwi.framework.KiwiFrameworkAutoConfiguration
+import de.kiwi.framework.infrastructure.bus.KiwiBusAutoConfiguration
+import de.kiwi.framework.infrastructure.mail.KiwiMailAutoConfiguration
 import de.kiwi.demo.access.instrument.ExplainInstrument
 import de.kiwi.demo.access.instrument.LogPerformanceProcessor
 import de.kiwi.demo.access.instrument.PerformanceInstrument
 import org.springframework.boot.SpringBootConfiguration
-import org.springframework.boot.autoconfigure.domain.EntityScan
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration
+import org.springframework.boot.persistence.autoconfigure.EntityScan
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Import
@@ -33,7 +37,13 @@ annotation class AccessControlTest
 @EntityScan("de.kiwi.demo.access")
 @ComponentScan("de.kiwi.demo.access")
 @EnableJpaRepositories("de.kiwi.demo.access")
-@Import(KiwiFrameworkConfiguration::class, KiwiAuditLogConfiguration::class)
+@ImportAutoConfiguration(
+    KiwiFrameworkAutoConfiguration::class,
+    KiwiBusAutoConfiguration::class,
+    KiwiMailAutoConfiguration::class,
+    KiwiAuditLogPackagesAutoConfiguration::class,
+    KiwiAuditLogAutoConfiguration::class,
+)
 class AccessControlTestConfig {
 
     @Bean

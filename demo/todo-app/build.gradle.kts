@@ -1,6 +1,5 @@
 plugins {
-    id("kiwi-common-convention")
-    id("org.springframework.boot")
+    id("de.kiwi.spring-boot-application-conventions")
 }
 
 group = "de.kiwi.demo"
@@ -14,16 +13,15 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
-    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-mustache")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
-    implementation("org.liquibase:liquibase-core")
+    implementation("tools.jackson.module:jackson-module-kotlin")
+    implementation("org.springframework.boot:spring-boot-starter-liquibase")
 
     implementation(libs.springdoc.openapi.starter.webmvc.ui)
 
     kapt("org.springframework.boot:spring-boot-configuration-processor")
-    kapt("org.hibernate.orm:hibernate-jpamodelgen")
+    kapt("org.hibernate.orm:hibernate-processor")
 
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     developmentOnly("org.springframework.boot:spring-boot-docker-compose")
@@ -33,9 +31,10 @@ dependencies {
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-    testImplementation("org.testcontainers:junit-jupiter")
-    testImplementation("org.testcontainers:mysql")
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-mysql")
 }

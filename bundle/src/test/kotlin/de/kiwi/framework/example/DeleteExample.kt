@@ -8,7 +8,7 @@ import de.kiwi.api.generic.GenericDelete
 import org.springframework.stereotype.Component
 
 class DeleteExample : GenericDelete<ExampleEntity, EntityId>() {
-    override val entityFieldset = ExampleFieldsets.default
+    override val detailsProvider = ExampleFieldsets.default
     override fun preAuthorize(user: UserDescriptor) {} //TODO
 }
 

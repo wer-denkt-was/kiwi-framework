@@ -8,15 +8,16 @@ import de.kiwi.api.generic.GenericUpdate
 import org.springframework.stereotype.Component
 
 class UpdateExample : GenericUpdate<ExampleEntity, EntityId>() {
-    override val entityFieldset = ExampleFieldsets.default
+    override val detailsProvider = ExampleFieldsets.default
+    val name by schema(ExampleSchema.name)
+    val optional by schema(ExampleSchema.optional)
     override fun preAuthorize(user: UserDescriptor) {} //TODO
 }
 
 @Component
 class UpdateExampleHandler : GenericUpdateHandler<UpdateExample, ExampleEntity>() {
-    override fun updateEntity(update: UpdateBody, entity: ExampleEntity, user: UserDescriptor): DomainResult<*> {
-        update.patchField(ExampleSchema.name)
-        update.patchField(ExampleSchema.optional)
+    override fun updateEntity(update: UpdateExample, entity: ExampleEntity, user: UserDescriptor): DomainResult<*> {
+        update.patchFields(entity, update::name, update::optional)
         return DomainResult.empty
     }
 }

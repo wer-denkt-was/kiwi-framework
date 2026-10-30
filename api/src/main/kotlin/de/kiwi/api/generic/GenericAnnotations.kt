@@ -7,7 +7,7 @@ import kotlin.reflect.KClass
  * Annotation for [Command][de.kiwi.api.domain.Command] classes that should be bound to the
  * generic entity controller `HTTP POST` create method of the given entity type.
  *
- * __NOTE__: The annotated command class *must* provide a no-argument constructor.
+ * __NOTE__: The annotated command class is deserialized from the JSON request body using Jackson.
  * @param value Entity type for create method
  */
 @MustBeDocumented
@@ -17,7 +17,7 @@ annotation class CreateCommand(val value: KClass<*>)
 
 /**
  * Annotation for [Command][de.kiwi.api.domain.Command] classes that should be bound to the
- * generic entity controller `HTTP PUT` update method of the given entity type.
+ * generic entity controller `HTTP PATCH` update method of the given entity type.
  *
  * __NOTE__: The annotated command class *must* provide a single-argument constructor accepting an [EntityId] of [idType].
  * @param value Entity type for which the annotated command provides an update method

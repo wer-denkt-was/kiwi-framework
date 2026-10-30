@@ -2,8 +2,8 @@ package de.kiwi.demo.access.instrument
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.module.kotlin.readValue
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
 

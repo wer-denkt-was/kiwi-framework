@@ -1,12 +1,12 @@
 package de.kiwi.framework.application.olap
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.module.kotlin.jacksonObjectMapper
 import de.kiwi.api.application.service.EntityTypeProvider
 import de.kiwi.api.domain.AccessControl
 import de.kiwi.api.domain.EntityId
 import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.api.olap.Slice
-import de.kiwi.framework.KiwiFrameworkConfiguration
+import de.kiwi.framework.SpringBootApplicationWithoutKiwi
 import de.kiwi.framework.infrastructure.generic.*
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
@@ -17,10 +17,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInfo
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
-import org.springframework.boot.autoconfigure.domain.EntityScan
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.springframework.boot.persistence.autoconfigure.EntityScan
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.core.convert.support.DefaultConversionService
@@ -38,7 +37,7 @@ import java.util.*
 )
 class AnalyticalReportQueryHandlerTest {
 
-    @SpringBootApplication(exclude = [KiwiFrameworkConfiguration::class])
+    @SpringBootApplicationWithoutKiwi
     @ComponentScan("de.kiwi.framework.infrastructure.generic")
     @EntityScan("de.kiwi.api", "de.kiwi.framework.infrastructure.generic")
     class TestApplicationConfig {
@@ -180,7 +179,8 @@ class AnalyticalReportQueryHandlerTest {
             metrics.add("total")
         }
 
-        val report = handler.handle(query, UserDescriptor.SYSTEM)
+        // Access control is only applied to non-admin users, UserDescriptor.SYSTEM would bypass it
+        val report = handler.handle(query, NonAdminUser)
         println("[*]> ${report.headers}")
         report.body.forEachIndexed { i, row -> println("[$i]> $row") }
 
@@ -211,4 +211,13 @@ class AnalyticalReportQueryHandlerTest {
             publisherId.`in`(onlyAllowPublisherIds)
         }
     }
+}
+
+private object NonAdminUser : UserDescriptor {
+    override val userId = 1L
+    override val identity = userId
+    override val username = "non-admin"
+    override val authenticated = true
+    override val roles = emptySet<String>()
+    override val principal = null
 }

@@ -19,6 +19,8 @@ class GlobalSingletonBean<T : Any>(
     private val singleton: GlobalSingleton<T>,
     private val singletonProvider: ObjectProvider<T>,
 ) : SmartInitializingSingleton, DisposableBean {
+    @Volatile
+    private var providedInstance: T? = null
 
     override fun afterSingletonsInstantiated() {
         if (log.isDebugEnabled) {
@@ -29,12 +31,19 @@ class GlobalSingletonBean<T : Any>(
             throw IllegalStateException("No unique bean available for global singleton: ${singleton.singletonName}")
         }
         singleton.provideInstance(instance)
+        providedInstance = instance
     }
 
     override fun destroy() {
         if (log.isDebugEnabled) {
             log.debug("Destroying global singleton ${singleton.singletonName} bean")
         }
-        singleton.cleanupInstance()
+
+        // Only clear the global singleton if it still holds the instance provided by this bean,
+        // as another application context may have provided its own instance in the meantime
+        providedInstance?.let { instance ->
+            providedInstance = null
+            singleton.cleanupInstance(instance)
+        }
     }
 }

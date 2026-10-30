@@ -15,6 +15,15 @@ chapters.
   using [@Configuration](https://docs.spring.io/spring-framework/reference/core/beans/java/configuration-annotation.html)
   classes with @Bean methods
 
+### Auto-Configuration
+
+- Autoconfiguration is the mechanism of Spring Boot to configure beans based on the libraries on the classpath and
+  the application configuration properties (see
+  ["Auto-configuration"](https://docs.spring.io/spring-boot/reference/using/auto-configuration.html))
+- Each Kiwi module (except the API module) provides autoconfiguration classes, e.g.
+  `KiwiFrameworkAutoConfiguration`, so adding a module to the classpath is enough to use it
+- Most beans provided by autoconfiguration back off if the application declares its own bean of the same type
+
 ### Entity
 
 - An entity represents a persistent object within the business domain of the application
@@ -24,6 +33,18 @@ chapters.
 - Entity class attributes are mapped to database table columns using @Column or @JoinColumn annotations
 - Entity classes can refer to each other with relations using @OneToOne, @OneToMany, @ManyToOne or @ManyToMany
 - Entity objects are managed by an EntityManager of the application Persistence Unit
+
+### EntitySchema
+
+- An entity schema is an object extending EntitySchema, which defines the fields of an entity that are available to
+  the API: columns, to-one references, and to-many references
+- Entity schemas are used to query entities, to read and write entity fields, and to define field-access-control
+
+### Fieldset
+
+- A fieldset is a named subset of the fields of an entity schema, defining the representation of an entity in a query
+  result, e.g. a short representation for lists and a detailed representation for a single entity
+- Fieldsets of an entity are aggregated in an object extending FieldsetsAvailable
 
 ### Command
 
@@ -38,11 +59,28 @@ chapters.
 
 ### CommandHandler
 
+- A command-handler is a bean implementing CommandHandler, which executes commands of one specific command class
+- Only a single handler must exist for any given command class
+- Handling a command returns a DomainResult, containing the command result and the domain events emitted by the command
+
 ### DomainEvent
+
+- A domain event is an object of a class extending DomainEvent, which describes something that happened in the
+  application domain, e.g. that an entity has been created
+- Domain events are emitted by command-handlers and event-subscribers, and are published to the
+  [EventBus](#eventbus)
+- Domain events are auditable, so they can appear in the audit-log
 
 ### EventBus
 
+- The event-bus is a service interface publishing domain events to all [EventSubscribers](#eventsubscriber) that are
+  subscribed to them
+- Events emitted while handling an event are published recursively, up to a configurable maximum recursion depth
+
 ### EventSubscriber
+
+- An event-subscriber is a bean implementing EventSubscriber, which handles domain events of one specific event class
+- Multiple subscribers can listen to the same event class, and are executed in the order of their `order` attribute
 
 ### Query
 
@@ -53,10 +91,14 @@ chapters.
 ### QueryBus
 
 - The query-bus is a service interface providing functionality to access data from the application core using queries
-- Implementations of the command-bus decorate the basic bus, implementing shared concerns such as read-only
+- Implementations of the query-bus decorate the basic bus, implementing shared concerns such as read-only
   transactions, query authorization, and automatically registering query-handler beans to the bus
 
 ### QueryHandler
+
+- A query-handler is a bean implementing QueryHandler, which resolves queries of one specific query class and returns
+  the query result
+- Only a single handler must exist for any given query class
 
 ### Service Interface
 
@@ -80,18 +122,28 @@ Snowflake IDs are universally unique 60-bit integers upon being generated.
 These 60 bits, made to fit neatly into a 12-character base32 string, are composed of the following components:
 
 - 42 bit timestamp in milliseconds, offset from 2024-01-01 00:00:00 UTC.
-- 10 bit machine ID, based on hashing the local hostname of the current machine.
+- 10 bit machine ID, identifying the machine or application instance generating the ID.
 - 8 bit sequence ID, used in case multiple IDs are generated at the same millisecond on the same machine.
 
 The binary representation is `0000ttttttttttttttttttttttttttttttttttttttttttmmmmmmmmmmssssssss`
 (`t` = Timestamp bit, `m` = Machine ID bit, `s` = Sequence ID bit).
 
+The machine ID (0-1023) is determined in the following order:
+
+1. The system property `kiwi.snowflake.machine.id`, if set.
+2. The environment variable `KIWI_SNOWFLAKE_MACHINE_ID`, if set.
+3. Otherwise, a hash of the local hostname.
+
+If you run multiple application instances, e.g. in a cluster, you can assign each instance a distinct machine ID to
+rule out ID collisions between instances caused by hostname hash collisions.
+
 When serialized as a string, Snowflake IDs are encoded as a base32 string.
 Base32 encoded IDs can contain the following characters:
 
 - Numeric characters (0-9).
-- Alphabetic characters (A-Z), case-insensitive, excluding the ambiguous letters `I`, `O` and `Z`.
-- When decoding, erroneous characters are treated as their respective similar number: I => 1, O => 0, and Z => 2.
+- Alphabetic characters (A-Z), case-insensitive, excluding the ambiguous letters `I`, `O`, `S` and `Z`.
+- When decoding, erroneous characters are treated as their respective similar number: I => 1, O => 0, S => 5, and
+  Z => 2.
 
 The source code for generating these Snowflake IDs can be found
 in [Snowflake.kt](../api/src/main/kotlin/de/kiwi/api/domain/Snowflake.kt)
@@ -121,6 +173,13 @@ This diagram shows an overview of the architecture within a project application 
 
 ![application architecture](./img/kiwi-app-architecture.png)
 
+### JPA Entity Lifecycle
+
+This diagram shows the lifecycle states of a JPA entity object, and the EntityManager operations transitioning
+between them
+
+![jpa entity lifecycle](./img/jpa-lifecycle.png)
+
 ## Class Diagrams
 
 This section contains class diagrams for various components of the Kiwi-Server framework.
@@ -141,176 +200,194 @@ and copy-paste the diagram code.
 title EntitySchema classes
 skinparam linetype ortho
 
-abstract class QuerySchema<E, S> {
-    + entityType: Class<E>
+abstract class AbstractSchema<E, S> {
+    + entityClass: Class<E>
 }
 
-abstract class EntitySchema<E> extends QuerySchema {
-    + columns: List<QueryColumn<E, *, *>>
-    + primaryKeys: List<QueryColumn<E, *, *>>
-    + toOneReferences: List<QueryToOne<E, *>>
-    + toManyReferences: List<QueryToMany<E, *, *, *>>
-    + toManyMapReferences: List<QueryToMany<E, *, *, *, *>> 
+abstract class EntitySchema<E> extends AbstractSchema {
+    + columns: List<ColumnField<E, *, *>>
+    + primaryKeys: List<ColumnField<E, *, *>>
+    + toOneReferences: List<ToOneField<E, *>>
+    + toManyReferences: List<ToManyField<E, *, *, *>>
+    + toManyMapReferences: List<ToManyMapField<E, *, *, *, *>>
+    + subtypeReferences: List<SubtypeField<E, *, *>>
+    + defaultSort: Sort
 
+    + fieldAccessControl(field: EntitySchemaField<E>): FieldAccessControl<E>?
     # column(...)
-    # toMany(...)
     # toOne(...)
+    # toMany(...)
+    # subtype(...)
 }
 
-abstract class SingleValueSchema<E, S> extends QuerySchema {
+abstract class SingleValueSchema<E, S> extends AbstractSchema implements ColumnType {
     + valueType: Class<S>
     + toValue(entity: E): S
 }
 
-EntitySchema *-d--> QueryColumn
-EntitySchema *-d--> QueryToOne
-EntitySchema *-d--> QueryToMany
-EntitySchema *-d--> QueryToManyMap
-
-class QueryColumn<E, T, M> {
-    * fieldName: String
+abstract class EntitySchemaField<E> {
+    + fieldName: String
     + parentSchema: EntitySchema<E>
+    + nullable: Boolean
+}
+
+EntitySchema *-d--> ColumnField
+EntitySchema *-d--> ToOneField
+EntitySchema *-d--> ToManyField
+EntitySchema *-d--> ToManyMapField
+EntitySchema *-d--> SubtypeField
+
+class ColumnField<E, T, M> extends EntitySchemaField {
     + selector: ColumnSelector<E, T>
     + type: ColumnType<T, M>
     + primaryKey: Boolean
-    + nullable: Boolean
+    + isReadOnly: Boolean
+    + attributeType: KClass<T>
 
-    + attributeType get(): Class<E>
-    + selectFrom(root: Path<E>, CriteriaBuilder): Expression<T>
+    + selectFrom(base: Path<E>, builder: CriteriaBuilder): Selection<T>
     + readFromEntity(entity: E): M?
-    + writeToEntity(entity: E, value: T)
+    + writeToEntity(entity: E, attributeValue: T?)
 }
 
-QueryColumn --d-> ColumnSelector
-QueryColumn --d-> ColumnType
+ColumnField --d-> ColumnSelector
+ColumnField --d-> ColumnType
 
-class QueryToOne<E, R> {
-    * fieldName: String
-    + parentSchema: EntitySchema<E>
-    + toOne: QuerySchema<R, *>
-    + attribute: SingularAttribute<E, R>
+class ToOneField<E, R> extends EntitySchemaField {
+    + toOne: AbstractSchema<R, *>
+    + attribute: KProperty1<E, R>
 }
 
-class QueryToMany<E, C, R, S> {
-    * fieldName: String
-    + parentSchema: EntitySchema<E>
-    + toMany: QuerySchema<E, S>
-    + attribute: PluralAttribute<E, C, R>
+class ToManyField<E, C, R, S> extends EntitySchemaField {
+    + toMany: AbstractSchema<R, S>
+    + attribute: KProperty1<E, C>
 }
 
-class QueryToManyMap<E, K, V, KS, VS> {
-    * fieldName: String
-    + parentSchema: EntitySchema<E>
-    + toManyKeys: QuerySchema<K, KS>
-    + toManyValues: QuerySchema<V, VS>
+class ToManyMapField<E, K, V, KS, VS> extends EntitySchemaField {
+    + toManyKeys: AbstractSchema<K, KS>
+    + toManyValues: AbstractSchema<V, VS>
+    + attribute: KProperty1<E, Map<K, V>>
+}
+
+class SubtypeField<E, C, CS> extends EntitySchemaField {
+    + subtypeSchema: AbstractSchema<C, CS>
 }
 
 interface ColumnSelector<E, T> {
-    + selectedType: Class<T>
-    + isOptional: Boolean
+    + selectedType: KClass<T>
+    + isNullable: Boolean
     + isReadOnly: Boolean
     + readValue(entity: E): T?
     + writeValue(entity: E, attributeValue: T?)
-    + selectFrom(root: Path<E>, builder: CriteriaBuilder)
+    + selectFrom(from: Path<E>, builder: CriteriaBuilder): Selection<T>
 }
 
 class AttributeSelector<E, T> implements ColumnSelector {
     + path: AttributePath<E, T>
-    + selectedType: Class<T>
 }
 
 class EntityTypeSelector<E> implements ColumnSelector
 
-class ComputedSelector<E, T> implements ColumnSelector {
-    + computation: EntityComputation<E, T>
-    + selectedType: Class<T>
-}
+class ComputedSelector<E, T> implements ColumnSelector
+
+class MultiValueSelector<E> implements ColumnSelector
 
 interface ColumnType<T, M> {
     + valueType: Class<M>
     + filterSet: ColumnFilterSet
-    + format(attributeValue: T): M
-    + parse(formattedValue: M): T
+    + format(value: T): M
+    + parse(value: M): T
 }
 
 ColumnType --l-> ColumnFilterSet
 
 interface ColumnFilterSet {
     + operators: Set<String>
-    + defaultOperator: ColumnFilterOperator
-    + get(operator: String): ColumnFilterOperator
+    + defaultOperator: ColumnFilterOperator?
+    + get(symbol: String): ColumnFilterOperator?
 }
 
 ColumnFilterSet o-d-> ColumnFilterOperator
 
 abstract class ColumnFilterOperator {
-    * symbol: String
+    + symbol: String
     + filter(...): Predicate
 }
 
-note top of QueryColumn
+note top of ColumnField
 **E**: Entity type
 **T**: Column attribute type
 **M**: Formatted column value type
 end note
 
-note bottom of QueryToOne
+note bottom of ToOneField
 **E**: Origin entity type
 **R**: Referenced entity type
 end note
 
-note bottom of QueryToMany
+note bottom of ToManyField
 **E**: Origin entity type
 **C**: Collection type (i.e. Collection, List, or Set)
 **R**: Referenced entity type
 **S**: Entity representation type
 end note
 
-note bottom of QueryToManyMap
+note bottom of ToManyMapField
 **E**: Origin entity type
 **K**: Referenced __key__ entity type
 **V**: Referenced __value__ entity type
 **KS**: Key entity representation type
 **VS**: Value entity representation type
 end note
+
+note bottom of SubtypeField
+**E**: Entity type
+**C**: Entity subtype
+**CS**: Subtype representation type
+end note
 @enduml
 ```
 
 ## Example application project
 
-Here is a list of all relevant files and directories present in the example application used throughout this guide,
-along with a short description of what each file or directory contains:
+The example Todo-List application built throughout this guide is available as the demo application
+[`demo/todo-app`](../demo/todo-app) in the Kiwi-Server repository. It is a Gradle subproject of the repository, so the
+Gradle wrapper, the settings file and the version catalog are located in the repository root directory. Its base
+package is `de.kiwi.demo`, while the examples in this guide use `com.example`.
 
-| File                                                        | Description                                                                |
-|-------------------------------------------------------------|----------------------------------------------------------------------------|
-| settings.gradle.kts                                         | Gradle project settings                                                    |
-| build.gradle.kts                                            | Gradle project build file                                                  |
-| gradlew                                                     | Gradle wrapper script, can download and execute gradle for project         |
-| gradlew.bat                                                 | Windows-specific version of gradlew                                        |
-| compose.yaml                                                | Docker compose file used for SpringBoot docker-compose services            |
-| .gitignore                                                  | Git configuration file specifying which files to ignore in version control |
-| gradle/                                                     | Gradle download directory used by gradlew                                  |
-| .gradle/                                                    | Temporary gradle project build/cache files                                 |
-| build/                                                      | Build files and artifacts generated by gradle tasks                        |
-| build/todo-app.model.ts                                     | Fieldsets typescript source-file generated by FieldsetSourceGeneratorTool  |
-| build/libs/                                                 | Output directory for .jar artifacts                                        |
-| src/main/kotlin/                                            | Kotlin main-module sources directory - contains main Kotlin code           |
-| src/main/kotlin/com/example/                                | Base package directory for application code                                |
-| src/main/kotlin/com/example/ExampleApplication.kt           | Main class of application, entrypoint for @SpringBootApplication           |
-| src/main/kotlin/com/example/domain/                         | Todo-App domain package directory                                          |
-| src/main/kotlin/com/example/domain/TodoEntities.kt          | Todo-App domain entity classes                                             |
-| src/main/kotlin/com/example/domain/TodoSchema.kt            | Todo-App domain entity schema- and available-fieldsets objects             |
-| src/main/kotlin/com/example/domain/TodoCommands.kt          | Todo-App domain command classes                                            |
-| src/main/kotlin/com/example/domain/TodoQueries.kt           | Todo-App domain query classes                                              |
-| src/main/kotlin/com/example/domain/TodoEvents.kt            | Todo-App domain event classes                                              |
-| src/main/kotlin/com/example/application/                    | Todo-App application package directory                                     |
-| src/main/kotlin/com/example/application/TodoHandlers.kt     | Todo-App application command-, query- and event-handlers                   |
-| src/main/kotlin/com/example/application/TodoRepositories.kt | Todo-App application repository interfaces                                 |
-| src/main/kotlin/com/example/web/                            | Todo-App web package directory                                             |
-| src/main/kotlin/com/example/web/IndexController.kt          | Index controller mapped to "/"                                             |
-| src/main/kotlin/com/example/web/TodoController.kt           | Todo-App web controllers, mapped to "/TodoItem" and "/TodoList"            |
-| src/main/resources/                                         | Main-module resources directory - contains main resource files             |
-| src/main/resources/application.yml                          | Main application configuration file                                        |
-| src/main/resources/db/changelog/                            | Liquibase changelog-files directory                                        |
-| src/main/resources/db/changelog/db.changelog-master.yaml    | Liquibase master-changelog file, entrypoint for Liquibase migrations       |
-| src/main/resources/db/changelog/db.example-01.yaml          | Liquibase migration file, version 01 of example todo-app database schema   |
+Here is a list of the relevant files and directories of the demo application, relative to `demo/todo-app`, along with
+a short description of what each file or directory contains:
+
+| File                                                                    | Description                                      |
+|-------------------------------------------------------------------------|--------------------------------------------------|
+| build.gradle.kts                                                        | Gradle build file                                |
+| compose.yaml                                                            | Docker Compose services: MySQL, mail-catcher     |
+| .gitignore                                                              | Excludes the local file storage directory        |
+| build/                                                                  | Build artifacts generated by Gradle tasks        |
+| build/demo.model.ts                                                     | TypeScript fieldset sources, generated by a test |
+| src/main/kotlin/de/kiwi/demo/                                           | Base package directory of the application        |
+| src/main/kotlin/de/kiwi/demo/DemoApplication.kt                         | Main class, annotated @SpringBootApplication     |
+| src/main/kotlin/de/kiwi/demo/DemoSecurityConfig.kt                      | Spring Security configuration, demo users        |
+| src/main/kotlin/de/kiwi/demo/domain/TodoList.kt                         | `TodoList` entity and `TodoListId` classes       |
+| src/main/kotlin/de/kiwi/demo/domain/TodoItem.kt                         | `TodoItem` entity and `TodoItemId` classes       |
+| src/main/kotlin/de/kiwi/demo/domain/command/TodoCommands.kt             | Command classes, incl. generic commands          |
+| src/main/kotlin/de/kiwi/demo/domain/command/TodoEvents.kt               | Domain event classes                             |
+| src/main/kotlin/de/kiwi/demo/domain/query/TodoQueries.kt                | Generic entity and report queries                |
+| src/main/kotlin/de/kiwi/demo/domain/schema/TodoSchema.kt                | Entity schema and fieldsets objects              |
+| src/main/kotlin/de/kiwi/demo/application/TodoListCommandHandlers.kt     | Command handlers for todo-lists                  |
+| src/main/kotlin/de/kiwi/demo/application/TodoItemCommandHandlers.kt     | Command handlers for todo-items                  |
+| src/main/kotlin/de/kiwi/demo/application/TodoListRepository.kt          | Repository interface for todo-lists              |
+| src/main/kotlin/de/kiwi/demo/application/TodoItemRepository.kt          | Repository interface for todo-items              |
+| src/main/kotlin/de/kiwi/demo/web/IndexController.kt                     | Index controller mapped to "/"                   |
+| src/main/kotlin/de/kiwi/demo/web/TodoItemController.kt                  | Custom endpoints, mapped to "/TodoItem"          |
+| src/main/resources/application.yml                                      | Main application configuration file              |
+| src/main/resources/banner.txt                                           | Spring Boot startup banner                       |
+| src/main/resources/db/changelog/db.changelog-master.yaml                | Liquibase master changelog                       |
+| src/main/resources/db/changelog/db.demo-001.yaml                        | Liquibase changelog of the todo-app schema       |
+| src/test/kotlin/de/kiwi/demo/DemoApplicationTests.kt                    | Integration tests, source generation             |
+| src/test/kotlin/de/kiwi/demo/application/DemoDataJpaTest.kt             | Configuration of the JPA slice tests             |
+| src/test/kotlin/de/kiwi/demo/application/TodoListCommandHandlersTest.kt | Tests of the todo-list command handlers          |
+| src/test/kotlin/de/kiwi/demo/application/TodoItemCommandHandlersTest.kt | Tests of the todo-item command handlers          |
+
+The demo application [`demo/access-control-tests`](../demo/access-control-tests) contains a more complex domain, with
+tests of entity- and field-access-control
+(see [Chapter 4: "Access Control"](./04-querying-access-control.md#access-control)).

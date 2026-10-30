@@ -35,5 +35,10 @@ class RecursiveEventBus(
         }
     }
 
-    class EventRecursionDepthExceeded(val maxRecursionDepth: Int) : Exception()
+    /**
+     * Thrown if publishing events recursively exceeds the maximum recursion depth, e.g. due to cyclic subscribers.
+     * Unchecked, so that Java callers can catch it and transactions roll back by default.
+     */
+    class EventRecursionDepthExceeded(val maxRecursionDepth: Int) :
+        RuntimeException("Exceeded event recursion depth [$maxRecursionDepth]")
 }

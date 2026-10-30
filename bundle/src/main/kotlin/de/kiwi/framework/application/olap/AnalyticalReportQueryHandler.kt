@@ -54,7 +54,7 @@ class AnalyticalReportQueryHandler(
             ?: emptyList()
 
         // Select dimensions and metrics, group by dimensions
-        criteriaQuery.multiselect(expressions.allExpressions)
+        criteriaQuery.select(builder.tuple(expressions.allExpressions))
         criteriaQuery.groupBy(expressions.dimensionExpressions)
 
         // Filter by slice- and access-control predicates
@@ -128,7 +128,7 @@ class AnalyticalReportQueryHandler(
         }
     }
 
-    private fun <T> sliceValueConverter(valueType: Class<T>) = fun(value: Any): T? {
+    private fun <T : Any> sliceValueConverter(valueType: Class<T>) = fun(value: Any): T? {
         return when (valueType) {
             // Same type, no conversion required
             value.javaClass -> {

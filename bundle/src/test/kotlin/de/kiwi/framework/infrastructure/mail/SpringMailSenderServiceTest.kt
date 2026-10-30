@@ -5,9 +5,10 @@ import de.kiwi.api.application.service.MailSenderService
 import de.kiwi.framework.KiwiFrameworkProperties
 import de.kiwi.framework.infrastructure.mail.template.MustacheMailTemplateRenderer
 import de.kiwi.framework.infrastructure.mail.template.ResourceMailTemplateProvider
-import de.kiwi.framework.mjml.MjmlConfiguration
-import de.kiwi.framework.mjml.MjmlMailProperties
-import de.kiwi.framework.mjml.MjmlMailTemplateRenderer
+import de.kiwi.mjml.KiwiMjmlAutoConfiguration
+import de.kiwi.mjml.MjmlCompiler
+import de.kiwi.mjml.MjmlMailProperties
+import de.kiwi.mjml.MjmlMailTemplateRenderer
 import jakarta.mail.Address
 import jakarta.mail.Message.RecipientType
 import jakarta.mail.Multipart
@@ -15,6 +16,7 @@ import jakarta.mail.internet.MimeMessage
 import jakarta.mail.internet.MimeMultipart
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers.*
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -26,23 +28,23 @@ import org.springframework.core.io.DefaultResourceLoader
 import org.springframework.mail.javamail.MimeMessagePreparator
 import org.springframework.security.util.InMemoryResource
 import java.io.ByteArrayOutputStream
+import java.io.Closeable
 
 class SpringMailSenderServiceTest {
     private val classLoader = SpringMailSenderServiceTest::class.java.classLoader
     private val resources = DefaultResourceLoader(classLoader)
     private val provider = ResourceMailTemplateProvider(resources, Charsets.UTF_8)
 
+    private lateinit var mjmlCompiler: MjmlCompiler
     private lateinit var sender: TestMailSenderAdapter
     private lateinit var service: SpringMailSenderService
 
     @BeforeEach
     fun setUp() {
         val mjmlProps = MjmlMailProperties(fonts = emptyMap())
-        val mjmlConfig = MjmlConfiguration(props = mjmlProps, resources = resources)
-        val mjmlCompiler = mjmlConfig.mjmlCompiler()
-        if (mjmlCompiler is InitializingBean) {
-            mjmlCompiler.afterPropertiesSet()
-        }
+        val mjmlConfig = KiwiMjmlAutoConfiguration(props = mjmlProps, resources = resources)
+        mjmlCompiler = mjmlConfig.mjmlCompiler()
+        (mjmlCompiler as? InitializingBean)?.afterPropertiesSet()
 
         val mustacheCompiler = Mustache.compiler()
 
@@ -62,6 +64,11 @@ class SpringMailSenderServiceTest {
                 sendToConsole = true,
             ),
         )
+    }
+
+    @AfterEach
+    fun tearDown() {
+        (mjmlCompiler as? Closeable)?.close()
     }
 
     @Test

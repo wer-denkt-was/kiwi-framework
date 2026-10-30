@@ -28,12 +28,12 @@ abstract class GenericDeleteHandler<GD : GenericDelete<E, *>, E : Any> : Generic
 
     override fun handle(command: GD, user: UserDescriptor) = DomainResult { record ->
         val entityId = command.entityId
-        val entityClass = command.entityFieldset.schema.entityClass
+        val entityClass = command.entityClass
 
         val entity = loadEntity(command, entityClass, user)
             ?: throw EntityNotFound(entityClass, entityId.toString())
 
-        val deletedDetails = command.entityDetails(entity, user)
+        val deletedDetails = command.detailsProvider.toJsonDetails(entity, user)
         record(beforeDeleteEntity(command, entity, user))
         entityManager.remove(entity)
 

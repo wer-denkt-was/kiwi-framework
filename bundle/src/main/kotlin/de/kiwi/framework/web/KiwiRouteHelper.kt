@@ -2,11 +2,7 @@ package de.kiwi.framework.web
 
 import de.kiwi.api.application.service.EntityTypeProvider
 import de.kiwi.framework.KiwiFrameworkProperties
-import org.springframework.boot.context.properties.EnableConfigurationProperties
-import org.springframework.stereotype.Component
 
-@Component
-@EnableConfigurationProperties(KiwiFrameworkProperties::class)
 class KiwiRouteHelper(
     private val props: KiwiFrameworkProperties,
     private val entityTypeProvider: EntityTypeProvider,

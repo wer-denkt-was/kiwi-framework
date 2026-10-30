@@ -27,6 +27,19 @@ class SpringUserDescriptorTest {
     }
 
     @Test
+    fun rolePrefixIsRemoved() {
+        val springUser = User.withUsername("admin").password("-").roles("USER", "ADMIN").build()
+        assertEquals(setOf("ROLE_USER", "ROLE_ADMIN"), springUser.authorities.map { it.authority }.toSet())
+
+        val userDescriptor = SpringUserDescriptor(springUser)
+        assertEquals(setOf("USER", "ADMIN"), userDescriptor.roles)
+        assertTrue(userDescriptor.isAdmin)
+
+        // Authorities are kept as-is with an empty prefix
+        assertEquals(setOf("ROLE_USER", "ROLE_ADMIN"), SpringUserDescriptor(springUser, rolePrefix = "").roles)
+    }
+
+    @Test
     fun userDescriptorWithoutId() {
         val userDescriptor = SpringUserDescriptor(user)
 

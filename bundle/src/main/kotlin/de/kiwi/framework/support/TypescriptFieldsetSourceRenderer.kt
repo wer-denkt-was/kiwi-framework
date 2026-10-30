@@ -1,8 +1,7 @@
 package de.kiwi.framework.support
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.module.kotlin.jacksonMapperBuilder
 import de.kiwi.api.domain.EntityId
 import de.kiwi.api.domain.EntityIdJsonModule
 import de.kiwi.framework.support.FieldsetSourceRenderer.*
@@ -40,10 +39,11 @@ data class TypescriptOptions(
     val endOfLine: String = "\n",
 )
 
-private val defaultObjectMapper by lazy {
-    jacksonObjectMapper()
-        .registerModule(EntityIdJsonModule())
-        .registerModule(JavaTimeModule())
+// Java time support is built into Jackson 3 databind, no JavaTimeModule needed
+private val defaultObjectMapper: ObjectMapper by lazy {
+    jacksonMapperBuilder()
+        .addModule(EntityIdJsonModule())
+        .build()
 }
 
 private class TsBuilderContext(
@@ -119,11 +119,10 @@ private class TsBuilderContext(
     }
 
     override fun declareFieldsOfType(beanType: Class<*>, mode: InterfaceBuilder.BeanMode) {
-        val deserialization = objectMapper.deserializationConfig
         val javaType = objectMapper.typeFactory.constructType(beanType)
         val description = when (mode) {
-            InterfaceBuilder.BeanMode.Create -> deserialization.introspectForCreation(javaType)
-            InterfaceBuilder.BeanMode.Update -> deserialization.introspect(javaType)
+            InterfaceBuilder.BeanMode.Create -> objectMapper.introspectForCreation(javaType)
+            InterfaceBuilder.BeanMode.Update -> objectMapper.introspectForDeserialization(javaType)
         }
 
         description.findProperties().forEach { prop ->

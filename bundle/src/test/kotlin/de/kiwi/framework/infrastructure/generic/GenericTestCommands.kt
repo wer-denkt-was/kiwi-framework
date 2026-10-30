@@ -1,6 +1,5 @@
 package de.kiwi.framework.infrastructure.generic
 
-import de.kiwi.api.domain.AccessControl
 import de.kiwi.api.domain.EntityId
 import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.api.generic.GenericCreate
@@ -8,22 +7,24 @@ import de.kiwi.api.generic.GenericDelete
 import de.kiwi.api.generic.GenericEntityQuery
 import de.kiwi.api.generic.GenericUpdate
 import de.kiwi.api.olap.AnalyticalReportQuery
-import de.kiwi.api.util.where
 import org.springframework.data.jpa.domain.Specification
 
 class CreatePublisher : GenericCreate<Publisher>() {
-    override val entityFieldset = PublisherFieldsets.default
-    override fun entityId(entity: Publisher) = entity.id
+    override val detailsProvider = PublisherFieldsets.default
+    val name by schema(PublisherSchema.name)
+    val contact by schema(PublisherSchema.contact)
     override fun preAuthorize(user: UserDescriptor) {} //TODO
 }
 
 class UpdatePublisher : GenericUpdate<Publisher, PublisherId>() {
-    override val entityFieldset = PublisherFieldsets.default
+    override val detailsProvider = PublisherFieldsets.default
+    val name by schema(PublisherSchema.name)
+    val contact by schema(PublisherSchema.contact)
     override fun preAuthorize(user: UserDescriptor) {} //TODO
 }
 
 class DeletePublisher : GenericDelete<Publisher, PublisherId>() {
-    override val entityFieldset = PublisherFieldsets.default
+    override val detailsProvider = PublisherFieldsets.default
     override fun preAuthorize(user: UserDescriptor) {} //TODO
 }
 

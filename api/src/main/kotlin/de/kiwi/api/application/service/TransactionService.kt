@@ -14,6 +14,13 @@ interface TransactionService {
      */
     fun <T> write(action: (TxContext) -> T): T
 
+    /**
+     * Execute the given [action] within a new, independent transaction, suspending the current transaction (if any).
+     * The new transaction is committed or rolled back independently of the suspended one, e.g. for writing audit-log
+     * entries of failed commands. Defaults to [write].
+     */
+    fun <T> writeNew(action: (TxContext) -> T): T = write(action)
+
     interface TxContext {
         val isNew: Boolean
         val isDone: Boolean

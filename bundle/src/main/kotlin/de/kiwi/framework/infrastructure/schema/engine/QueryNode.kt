@@ -38,18 +38,29 @@ internal class RootQueryNode(
     override val expressionContext: ExpressionContext,
 ) : SimpleQueryNode() {
 
-    fun limitAndOffset(pagination: Pageable) {
-        tupleQuery.maxResults = pagination.pageSize
-        tupleQuery.firstResult = PageableUtils.getOffsetAsInteger(pagination)
+    /**
+     * Limit the query results to the given [pagination] window, if paged.
+     * The [totalLimit] acts as a hard cap on the overall result set, pages are windows within this capped result set:
+     * Pages beyond the total limit are empty, and a page overlapping the total limit is truncated.
+     */
+    fun limit(pagination: Pageable, totalLimit: Long?) {
+        val offset = if (pagination.isPaged) PageableUtils.getOffsetAsInteger(pagination) else 0
+        val pageSize = if (pagination.isPaged) pagination.pageSize.toLong() else null
+        val remaining = totalLimit?.let { (it - offset).coerceAtLeast(0) }
+        val maxResults = listOfNotNull(pageSize, remaining).minOrNull()
+
+        if (offset > 0) tupleQuery.firstResult = offset
+        if (maxResults != null) tupleQuery.maxResults = maxResults.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        exhausted = maxResults == 0L
     }
 
-    fun totalLimit(limit: Long) {
-        tupleQuery.maxResults = limit.toInt()
-    }
+    /** Set if the query is known to return no results, e.g. if the page lies beyond the total limit */
+    private var exhausted = false
 
     fun <N> execute(serializer: FieldsetSerializer<N>, user: UserDescriptor?): List<N> {
         // Execute the parent query: This will retrieve rows containing primary key values, column values,
         // and nested to-one values of parent entities.
+        if (exhausted) return emptyList()
         val resultList = tupleQuery.resultListOrNullIfEmpty ?: return emptyList()
 
         val childValuesByKeyByField = if (primaryKey == null) {

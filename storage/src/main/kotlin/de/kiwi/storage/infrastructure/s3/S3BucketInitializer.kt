@@ -19,7 +19,7 @@ object DoNothingBucketInitializer : S3BucketInitializer {
 object ValidateBucketInitializer : S3BucketInitializer {
     override suspend fun initializeBucket(client: S3Client, bucket: String, publicRead: Boolean) {
         if (!client.checkBucketExists(bucket)) {
-            throw Exception("S3 validation failed: Missing bucket $bucket")
+            throw IllegalStateException("S3 validation failed: Missing bucket $bucket")
         }
     }
 }

@@ -1,28 +1,30 @@
 package de.kiwi.framework.infrastructure.schema
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.module.kotlin.jacksonObjectMapper
 import de.kiwi.api.application.service.UserDescriptorProvider
 import de.kiwi.api.domain.BaseEntity_
 import de.kiwi.api.domain.DomainException
 import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.api.generic.PageResult
 import de.kiwi.api.schema.QuerySchemaService
-import de.kiwi.framework.KiwiFrameworkConfiguration
+import de.kiwi.api.util.reusableJoin
+import de.kiwi.framework.SpringBootApplicationWithoutKiwi
 import de.kiwi.framework.infrastructure.generic.*
 import jakarta.persistence.EntityManager
+import jakarta.persistence.criteria.JoinType
 import jakarta.persistence.PersistenceContext
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.function.Executable
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
-import org.springframework.boot.autoconfigure.domain.EntityScan
-import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.springframework.boot.persistence.autoconfigure.EntityScan
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Import
@@ -44,7 +46,7 @@ import kotlin.reflect.KClass
 )
 class JpaQuerySchemaServiceTest {
 
-    @SpringBootApplication(exclude = [KiwiFrameworkConfiguration::class])
+    @SpringBootApplicationWithoutKiwi
     @ComponentScan("de.kiwi.framework.infrastructure.generic")
     @EntityScan("de.kiwi.api", "de.kiwi.framework.infrastructure.generic")
     @Import(JacksonAutoConfiguration::class)
@@ -202,6 +204,37 @@ class JpaQuerySchemaServiceTest {
         println(">>> ${toPrettyJson(result)}")
     }
 
+    @Test
+    fun findPageWithTotalLimit() {
+        // Three authors exist, the total limit caps the result set to the first two authors
+        fun findAuthorPage(page: Int, size: Int) = querySchemaService.findPage(
+            fieldset = AuthorFieldsets.default,
+            specification = Specification.unrestricted(),
+            pagination = Pageable.ofSize(size).withPage(page),
+            sort = Sort.by(Author_.EMAIL),
+            totalLimit = 2,
+        )
+
+        val firstPage = findAuthorPage(page = 0, size = 10)
+        assertEquals(2, firstPage.content.size)
+        assertEquals(2, firstPage.totalElements)
+
+        val truncatedPage = findAuthorPage(page = 1, size = 1)
+        assertEquals(1, truncatedPage.content.size)
+        assertEquals(2, truncatedPage.totalElements)
+
+        val pageBeyondLimit = findAuthorPage(page = 1, size = 2)
+        assertEquals(0, pageBeyondLimit.content.size)
+        assertEquals(2, pageBeyondLimit.totalElements)
+
+        val unpaged = querySchemaService.findAll(
+            fieldset = AuthorFieldsets.default,
+            specification = Specification.unrestricted(),
+            totalLimit = 2,
+        )
+        assertEquals(2, unpaged.size)
+    }
+
     private fun <E : Any> findEntities(
         entityType: KClass<E>,
         filter: Specification<E>,
@@ -245,6 +278,24 @@ class JpaQuerySchemaServiceTest {
         }
         println(">>> ${toPrettyJson(result)}")
         //TODO: Assertions
+    }
+
+    @Test
+    fun joinSubtypeAttributes() {
+        // Singular and plural attributes declared on a subtype are joined by name from the parent entity type (U-07)
+        val builder = entityManager.criteriaBuilder
+        val query = builder.createQuery(Publication::class.java)
+        val root = query.from(Publication::class.java)
+        val mainAuthor = root.reusableJoin<Publication, Author>("mainAuthor", JoinType.LEFT)
+        val keywords = root.reusableJoin<Publication, String>("keywords", JoinType.INNER)
+        query.select(root).distinct(true).where(builder.equal(keywords, "potatoes"))
+
+        val result = entityManager.createQuery(query).resultList
+        assertEquals(listOf(data.book1.id), result.map { it.id })
+
+        // Joins are reused
+        assertSame(mainAuthor, root.reusableJoin<Publication, Author>("mainAuthor", JoinType.LEFT))
+        assertSame(keywords, root.reusableJoin<Publication, String>("keywords", JoinType.INNER))
     }
 
     @Test

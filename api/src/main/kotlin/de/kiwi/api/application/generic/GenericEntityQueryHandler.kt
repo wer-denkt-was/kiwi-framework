@@ -1,6 +1,6 @@
 package de.kiwi.api.application.generic
 
-import com.fasterxml.jackson.databind.JsonNode
+import tools.jackson.databind.JsonNode
 import de.kiwi.api.application.query.QueryHandler
 import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.api.generic.GenericEntityQuery

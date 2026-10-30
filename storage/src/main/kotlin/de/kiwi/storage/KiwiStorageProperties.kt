@@ -5,9 +5,14 @@ import java.net.URI
 import java.nio.file.Path
 import java.nio.file.Paths
 
+/**
+ * Configuration properties (prefix `kiwi.storage`). Properties are `var` to be included in the configuration
+ * metadata, see `KiwiFrameworkProperties` of the kiwi-framework module.
+ */
 @ConfigurationProperties("kiwi.storage")
 data class KiwiStorageProperties(
-    var provider: StorageProvider = StorageProvider.S3,
+    /** Storage provider, required unless the application declares its own `FileStorageService` bean */
+    var provider: StorageProvider? = null,
     val s3: S3Properties = S3Properties(),
     val local: LocalFileProperties = LocalFileProperties(),
     val entity: EntityOptions = EntityOptions(),
@@ -47,6 +52,19 @@ data class KiwiStorageProperties(
         var forceScheme: String? = null,
         var fileServerOrigin: URI? = null,
         var parentDirectory: Path = Paths.get("storage"),
+        val token: LocalFileTokenProperties = LocalFileTokenProperties(),
+    )
+
+    data class LocalFileTokenProperties(
+        /**
+         * Base64-encoded secret key for signing file access tokens, required for the local file storage provider.
+         * Must be at least 256 bits, e.g. generated using the command line:
+         * ```sh
+         * head -c 32 /dev/random | base64
+         * ```
+         * All application instances serving the same local file storage must share the same secret key.
+         */
+        var secretKey: String = "",
     )
 
     data class EntityOptions(

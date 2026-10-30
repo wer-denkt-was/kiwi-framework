@@ -48,8 +48,9 @@ fun String.splitWithEscape(
         }
         buffer.append(char)
     }
+    // A trailing escape character doesn't escape anything, keep it as part of the last token
     if (inEscape) {
-        tokens.add(escape.toString())
+        buffer.append(escape)
     }
     tokens.add(buffer.toString())
 

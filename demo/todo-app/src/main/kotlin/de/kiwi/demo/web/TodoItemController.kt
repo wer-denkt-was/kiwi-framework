@@ -9,8 +9,8 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
@@ -21,7 +21,7 @@ class TodoItemController(
     private val bus: CommandQueryBus,
 ) {
     @Operation(summary = "Move a TodoItem into a specific TodoList")
-    @PutMapping(path = ["/{itemId}/TodoList/{listId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    @PatchMapping(path = ["/{itemId}/TodoList/{listId}"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun moveItemToList(
         @PathVariable("itemId") itemId: TodoItemId,
         @PathVariable("listId") listId: TodoListId,

@@ -1,9 +1,10 @@
 package de.kiwi.demo.application
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import de.kiwi.api.domain.AccessDenied
 import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.api.generic.EntityUpdated
+import de.kiwi.api.generic.GenericBodyCommand
 import de.kiwi.api.util.find
 import de.kiwi.demo.domain.TodoItem
 import de.kiwi.demo.domain.TodoList
@@ -59,9 +60,9 @@ class TodoListCommandHandlersTest {
     @Test
     fun createEntity() {
         val command = CreateTodoList().apply {
-            jsonBody = json("""{ "title": "create test list" }""")
+            bindJson("""{ "title": "create test list" }""")
         }
-        val events = tx { createTodoListHandler.handle(command, user = alice) } ?: fail("missing events")
+        val events = tx { createTodoListHandler.handle(command, user = alice) }
 
         val created = events.findByType<TodoListCreated>() ?: fail("missing TodoListCreated")
         assertEquals(alice.username, created.todoList.author)
@@ -75,9 +76,9 @@ class TodoListCommandHandlersTest {
 
         val command = UpdateTodoList().apply {
             entityId = todoList.id
-            jsonBody = json("""{ "title": "new list title!" }""")
+            bindJson("""{ "title": "new list title!" }""")
         }
-        val events = tx { updateTodoListHandler.handle(command, user = alice) } ?: fail("missing events")
+        val events = tx { updateTodoListHandler.handle(command, user = alice) }
 
         val updated = events.findByType<EntityUpdated>() ?: fail("missing EntityUpdated")
         val updatedTodoList = entityManager.find<TodoList>(updated.entityId) ?: fail("missing updated TodoList")
@@ -92,7 +93,7 @@ class TodoListCommandHandlersTest {
 
         val command = UpdateTodoList().apply {
             entityId = todoList.id
-            jsonBody = json("""{ "title": "alice can't update bob's list!" }""")
+            bindJson("""{ "title": "alice can't update bob's list!" }""")
         }
         assertThrows<AccessDenied> {
             tx { updateTodoListHandler.handle(command, user = alice) }
@@ -106,7 +107,7 @@ class TodoListCommandHandlersTest {
         val command = DeleteTodoList().apply {
             entityId = todoList.id
         }
-        val events = tx { deleteTodoListHandler.handle(command, user = alice) } ?: fail("missing events")
+        val events = tx { deleteTodoListHandler.handle(command, user = alice) }
 
         val deleted = events.findByType<TodoListDeleted>() ?: fail("missing TodoListDeleted")
         assertNull(entityManager.find<TodoList>(deleted.todoList.id))
@@ -130,6 +131,8 @@ class TodoListCommandHandlersTest {
     // --- Utilities ---
 
     private fun json(@Language("JSON") json: String) = objectMapper.readTree(json)
+
+    private fun GenericBodyCommand<*>.bindJson(@Language("JSON") json: String) = bind(json(json), objectMapper)
 
     private inline fun <T> tx(crossinline action: () -> T) = transactions.execute { action() }
 }

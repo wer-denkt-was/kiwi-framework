@@ -6,16 +6,18 @@ import de.kiwi.framework.application.olap.AnalyticalReportQueryHandler
 import de.kiwi.framework.infrastructure.jpa.EntityTypeProviderConfiguration
 import de.kiwi.framework.infrastructure.util.ClassPathScannerUtil
 import de.kiwi.framework.infrastructure.util.FrameworkUtilConfiguration
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.core.convert.ConversionService
 
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @Import(EntityTypeProviderConfiguration::class, FrameworkUtilConfiguration::class)
 class AnalyticalReportConfiguration {
 
     @Bean
+    @ConditionalOnMissingBean
     fun analyticalReportQueryHandler(
         conversionService: ConversionService,
         entityTypeProvider: EntityTypeProvider,
@@ -25,6 +27,7 @@ class AnalyticalReportConfiguration {
     )
 
     @Bean
+    @ConditionalOnMissingBean
     fun analyticalReportProvider(scanner: ClassPathScannerUtil): AnalyticalReportProvider =
         SpringAnalyticalReportProvider(scanner)
 }

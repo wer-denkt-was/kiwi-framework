@@ -37,7 +37,7 @@ class DynamicColumnFilter(
 
         filterableColumns.forEach { column ->
             filterDescriptors
-                .filter { descriptor -> descriptor.fieldName == column.fieldName }
+                .filter { descriptor -> descriptor.fieldName.equals(column.fieldName, ignoreCase = true) }
                 .forEach { descriptor ->
                     descriptor.lookupFilterOperator(column)?.let { operator ->
                         filter.setColumnFilter(

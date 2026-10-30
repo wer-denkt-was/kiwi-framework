@@ -1,10 +1,10 @@
 package de.kiwi.framework.support
 
-import com.fasterxml.jackson.core.TreeNode
-import com.fasterxml.jackson.databind.BeanProperty
-import com.fasterxml.jackson.databind.JavaType
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.jsonFormatVisitors.*
+import tools.jackson.core.TreeNode
+import tools.jackson.databind.BeanProperty
+import tools.jackson.databind.JavaType
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.jsonFormatVisitors.*
 import de.kiwi.api.domain.EntityId
 import de.kiwi.framework.support.FieldsetSourceRenderer.FieldType
 import kotlin.reflect.full.isSubclassOf
@@ -153,7 +153,8 @@ class TypescriptTypeRenderer(
 
     private fun JsonShape.wrapNullable() = map { createNullableType(it) }
 
-    private inner class TypescriptJsonFormatVisitor : JsonFormatVisitorWrapper.Base(objectMapper.serializerProvider) {
+    // Serialization context is assigned by ObjectMapper.acceptJsonFormatVisitor
+    private inner class TypescriptJsonFormatVisitor : JsonFormatVisitorWrapper.Base() {
         fun result() = shape.result()
 
         private var shape: JsonShape = JsonShape.Simple(TS_UNKNOWN)
@@ -217,7 +218,7 @@ class TypescriptTypeRenderer(
             shape = TS_UNKNOWN.toSimpleShape().wrapInArray()
 
             // Refine array-type if item-type is known
-            return object : JsonArrayFormatVisitor.Base() {
+            return object : JsonArrayFormatVisitor.Base(context) {
                 override fun itemsFormat(handler: JsonFormatVisitable, elementType: JavaType) {
                     val itemTypeShape = recursiveShapeOf(elementType)
                     shape = itemTypeShape.wrapInArray()
@@ -246,7 +247,7 @@ class TypescriptTypeRenderer(
             shape = JsonShape.Object(properties, required)
 
             // Refine object-type if object properties are known, by mutating referenced required/properties collections
-            return object : JsonObjectFormatVisitor.Base() {
+            return object : JsonObjectFormatVisitor.Base(context) {
                 override fun property(prop: BeanProperty) =
                     addProperty(prop.name, prop.type, isRequired = true)
 
@@ -276,7 +277,7 @@ class TypescriptTypeRenderer(
             var valueShape: JsonShape = TS_UNKNOWN.toSimpleShape()
             shape = JsonShape.Record(keyShape, valueShape)
 
-            return object : JsonMapFormatVisitor.Base() {
+            return object : JsonMapFormatVisitor.Base(context) {
                 override fun keyFormat(handler: JsonFormatVisitable, keyType: JavaType) {
                     keyShape = recursiveShapeOf(keyType)
                     shape = JsonShape.Record(keyShape, valueShape)

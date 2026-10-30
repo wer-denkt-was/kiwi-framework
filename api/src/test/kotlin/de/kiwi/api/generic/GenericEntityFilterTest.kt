@@ -18,8 +18,8 @@ import org.junit.jupiter.api.fail
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
-import org.springframework.boot.autoconfigure.domain.EntityScan
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.springframework.boot.persistence.autoconfigure.EntityScan
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.support.ConversionServiceFactoryBean
 import org.springframework.core.convert.ConversionService
@@ -152,7 +152,11 @@ class GenericEntityFilterTest {
         val query = generateQuery(MyEntity::class, filter)
         assertNotNull(query.restriction)
         query.restriction.assertHqlPredicates(
-            stringContainsInOrder(MyEntity_.class_.name, "=", "class", MyEntity::class.qualifiedName),
+            anyOf(
+                stringContainsInOrder(MyEntity_.class_.name, "=", "class", MyEntity::class.qualifiedName),
+                // Hibernate 7 renders the type of an entity without subtypes as a constant literal
+                stringContainsInOrder("'${MyEntity::class.qualifiedName}'", "=", "'${MyEntity::class.qualifiedName}'"),
+            ),
             stringContainsInOrder(MyEntity_.BAR, ">=", "0"),
             stringContainsInOrder(MyEntity_.BAR, "<", "100"),
             stringContainsInOrder(MyEntity_.DATE, "in", "(", "1996-03-28", "2024-03-28", ")"),

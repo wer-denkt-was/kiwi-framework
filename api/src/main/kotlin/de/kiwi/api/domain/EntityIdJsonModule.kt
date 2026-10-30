@@ -1,15 +1,16 @@
 package de.kiwi.api.domain
 
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.databind.*
-import com.fasterxml.jackson.databind.deser.KeyDeserializers
-import com.fasterxml.jackson.databind.module.SimpleDeserializers
-import com.fasterxml.jackson.databind.module.SimpleModule
-import com.fasterxml.jackson.databind.module.SimpleSerializers
+import tools.jackson.core.JsonGenerator
+import tools.jackson.core.JsonParser
+import com.fasterxml.jackson.annotation.JsonFormat
+import tools.jackson.databind.*
+import tools.jackson.databind.deser.KeyDeserializers
+import tools.jackson.databind.module.SimpleDeserializers
+import tools.jackson.databind.module.SimpleModule
+import tools.jackson.databind.module.SimpleSerializers
 
 /**
- * Jackson [ObjectMapper] support for [EntityId] serialization and deserialization.
+ * Jackson [JacksonModule] support for [EntityId] serialization and deserialization.
  */
 class EntityIdJsonModule : SimpleModule("kiwi-entity-id") {
     override fun setupModule(context: SetupContext) {
@@ -24,17 +25,18 @@ private class EntityIdSerializers(private val fieldName: Boolean) : SimpleSerial
     override fun findSerializer(
         config: SerializationConfig,
         type: JavaType,
-        beanDesc: BeanDescription,
-    ): JsonSerializer<*>? {
+        beanDescRef: BeanDescription.Supplier,
+        formatOverrides: JsonFormat.Value?,
+    ): ValueSerializer<*>? {
         return forEntityIdClass(type) { EntityIdSerializer(fieldName = fieldName) }
     }
 }
 
-private class EntityIdSerializer(private val fieldName: Boolean) : JsonSerializer<EntityId>() {
-    override fun serialize(value: EntityId, gen: JsonGenerator, serializers: SerializerProvider) {
+private class EntityIdSerializer(private val fieldName: Boolean) : ValueSerializer<EntityId>() {
+    override fun serialize(value: EntityId, gen: JsonGenerator, ctxt: SerializationContext) {
         // Always serialize EntityId as strings (either text or field-name tokens)
         val stringValue = value.toString()
-        if (fieldName) gen.writeFieldName(stringValue)
+        if (fieldName) gen.writeName(stringValue)
         else gen.writeString(stringValue)
     }
 }
@@ -43,15 +45,15 @@ private class EntityIdDeserializers : SimpleDeserializers(), KeyDeserializers {
     override fun findBeanDeserializer(
         type: JavaType,
         config: DeserializationConfig,
-        beanDesc: BeanDescription,
-    ): JsonDeserializer<*>? {
+        beanDescRef: BeanDescription.Supplier,
+    ): ValueDeserializer<*>? {
         return forEntityIdClass(type) { EntityIdDeserializer(it) }
     }
 
     override fun findKeyDeserializer(
         type: JavaType,
         config: DeserializationConfig,
-        beanDesc: BeanDescription,
+        beanDescRef: BeanDescription.Supplier,
     ): KeyDeserializer? {
         return forEntityIdClass(type) { EntityIdKeyDeserializer(it) }
     }
@@ -63,12 +65,12 @@ private inline fun <T> forEntityIdClass(type: JavaType, then: (Class<out EntityI
     else -> null
 }
 
-private class EntityIdDeserializer(private val entityIdClass: Class<out EntityId>) : JsonDeserializer<EntityId>() {
+private class EntityIdDeserializer(private val entityIdClass: Class<out EntityId>) : ValueDeserializer<EntityId>() {
     override fun deserialize(p: JsonParser, ctxt: DeserializationContext): EntityId {
-        val token = p.currentToken
+        val token = p.currentToken()
         return when {
             token.isNumeric -> EntityId.fromValue(p.longValue, entityIdClass)
-            else -> EntityId.fromString(p.text, entityIdClass)
+            else -> EntityId.fromString(p.string, entityIdClass)
         }
     }
 }

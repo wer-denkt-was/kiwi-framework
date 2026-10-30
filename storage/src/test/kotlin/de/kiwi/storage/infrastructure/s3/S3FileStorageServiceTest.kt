@@ -33,8 +33,8 @@ class S3FileStorageServiceTest {
     @Test
     fun initializeCreateBucketIfNotExists() {
         val client = mock<S3Client> {
-            onBlocking { headBucket(any()) } doThrow NoSuchBucket {}
-            onBlocking { createBucket(any()) } doAnswer { CreateBucketResponse { location = "/test-bucket" } }
+            on { headBucket(any()) } doThrow NoSuchBucket {}
+            on { createBucket(any()) } doAnswer { CreateBucketResponse { location = "/test-bucket" } }
         }
 
         val service = S3FileStorageService(client, props.copy(validateBucket = ValidateBucketMode.AutoCreate))
@@ -47,8 +47,8 @@ class S3FileStorageServiceTest {
     @Test
     fun initializeCreateBucketAlreadyExists() {
         val client = mock<S3Client> {
-            onBlocking { headBucket(any()) } doAnswer { HeadBucketResponse {} }
-            onBlocking { createBucket(any()) } doAnswer { CreateBucketResponse { location = "/test-bucket" } }
+            on { headBucket(any()) } doAnswer { HeadBucketResponse {} }
+            on { createBucket(any()) } doAnswer { CreateBucketResponse { location = "/test-bucket" } }
         }
 
         val service = S3FileStorageService(client, props.copy(validateBucket = ValidateBucketMode.AutoCreate))
@@ -61,7 +61,7 @@ class S3FileStorageServiceTest {
     @Test
     fun uploadFileData() {
         val client = mock<S3Client> {
-            onBlocking { putObject(any()) } doAnswer { PutObjectResponse {} }
+            on { putObject(any()) } doAnswer { PutObjectResponse {} }
         }
 
         val service = S3FileStorageService(client, props)
@@ -89,7 +89,7 @@ class S3FileStorageServiceTest {
     @Test
     fun uploadSiblingFileData() {
         val client = mock<S3Client> {
-            onBlocking { putObject(any()) } doAnswer { PutObjectResponse {} }
+            on { putObject(any()) } doAnswer { PutObjectResponse {} }
         }
 
         val service = S3FileStorageService(client, props)
@@ -167,7 +167,7 @@ class S3FileStorageServiceTest {
     }
 
     private fun mockGetObjectClient(key: String, data: ByteArray) = mock<S3Client> {
-        onBlocking { it.getObject<Any?>(any(), any()) } doSuspendableAnswer {
+        on { it.getObject<Any?>(any(), any()) } doSuspendableAnswer {
             val request = it.getArgument<GetObjectRequest>(0)
             val callback = it.getArgument<suspend (GetObjectResponse) -> Any>(1)
             assertEquals(key, request.key)

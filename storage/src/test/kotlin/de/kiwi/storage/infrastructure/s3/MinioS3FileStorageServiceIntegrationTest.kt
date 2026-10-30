@@ -8,6 +8,7 @@ import de.kiwi.storage.KiwiStorageProperties.S3Properties.*
 import de.kiwi.storage.infrastructure.withTemporaryFile
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeAll
@@ -88,7 +89,7 @@ class MinioS3FileStorageServiceIntegrationTest {
         @DynamicPropertySource
         fun registerProperties(registry: DynamicPropertyRegistry) {
             val minioUri = URI.create(minioContainer.s3URL)
-            registry.add("kiwi.storage.mode") { KiwiStorageProperties.StorageProvider.S3 }
+            registry.add("kiwi.storage.provider") { KiwiStorageProperties.StorageProvider.S3 }
             registry.add("kiwi.storage.s3.scheme") { "http" }
             registry.add("kiwi.storage.s3.hostname") { "${minioUri.host}:${minioUri.port}" }
             registry.add("kiwi.storage.s3.access-key") { minioContainer.userName }
@@ -117,7 +118,7 @@ class MinioS3FileStorageServiceIntegrationTest {
 
     @BeforeEach
     fun setUp() {
-        assumeTrue { fileStorageService is S3FileStorageService }
+        assertInstanceOf<S3FileStorageService>(fileStorageService)
     }
 
     @Test

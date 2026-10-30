@@ -22,22 +22,22 @@ class SpringQuerySchemaProvider(
 
     override fun afterPropertiesSet() {
         val basePackages = classPathScanner.findEntityAndComponentBasePackages()
+        // Non-public classes are ignored by the scanner, e.g. private schema objects not meant to be registered globally
         val filterClasses = classPathScanner.findClassesOfTypeInPackages<GenericEntityFilter<*>>(basePackages)
         val schemaClasses = classPathScanner.findClassesOfTypeInPackages<EntitySchema<*>>(basePackages)
         val fieldsetsClasses = classPathScanner.findClassesOfTypeInPackages<FieldsetsAvailable<*>>(basePackages)
 
-        entityFilterTypes = filterClasses.associateBy {
-            it.lookupSupertypeArgument<GenericEntityFilter<*>>(0)
-        }
-        entitySchemas = schemaClasses.associate {
-            it.lookupSupertypeArgument<EntitySchema<*>>(0) to singletonFromType(it)
-        }
-        entityFieldsetAggregates = fieldsetsClasses.associate {
-            it.lookupSupertypeArgument<FieldsetsAvailable<*>>(0) to singletonFromType(it)
-        }
+        entityFilterTypes = filterClasses
+            .uniqueByEntityType("entity filter") { it.lookupSupertypeArgument<GenericEntityFilter<*>>(0) }
+        entitySchemas = schemaClasses
+            .uniqueByEntityType("entity schema") { it.lookupSupertypeArgument<EntitySchema<*>>(0) }
+            .mapValues { (_, type) -> singletonFromType(type) }
+        entityFieldsetAggregates = fieldsetsClasses
+            .uniqueByEntityType("fieldsets") { it.lookupSupertypeArgument<FieldsetsAvailable<*>>(0) }
+            .mapValues { (_, type) -> singletonFromType(type) }
 
         // Log schema, filter and fieldsets grouped by entity type
-        val entityTypes = (entityFilterTypes.keys + entityFilterTypes.keys + entityFieldsetAggregates.keys).distinct()
+        val entityTypes = (entitySchemas.keys + entityFilterTypes.keys + entityFieldsetAggregates.keys).distinct()
         entityTypes.forEach { entityType ->
             val schema = entitySchemas[entityType]
             val filter = entityFilterTypes[entityType]
@@ -68,4 +68,19 @@ class SpringQuerySchemaProvider(
         @Suppress("UNCHECKED_CAST")
         return entityFieldsetAggregates[entityType] as FieldsetsAvailable<E>?
     }
+}
+
+/**
+ * Associate the given classes by their entity type, failing if several classes are declared for the same entity type.
+ */
+private fun <T : Class<*>> List<T>.uniqueByEntityType(kind: String, entityType: (T) -> Class<*>): Map<Class<*>, T> {
+    val classesByEntityType = groupBy(entityType)
+    val duplicates = classesByEntityType.filterValues { it.size > 1 }
+    check(duplicates.isEmpty()) {
+        val details = duplicates.entries.joinToString("; ") { (entityType, classes) ->
+            "${entityType.name} -> ${classes.joinToString { it.name }}"
+        }
+        "Duplicate $kind classes found for entity types: $details"
+    }
+    return classesByEntityType.mapValues { (_, classes) -> classes.single() }
 }

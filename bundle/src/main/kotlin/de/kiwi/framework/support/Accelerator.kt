@@ -1,8 +1,8 @@
 package de.kiwi.framework.support
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.ArrayNode
-import com.fasterxml.jackson.databind.node.ObjectNode
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.ArrayNode
+import tools.jackson.databind.node.ObjectNode
 import de.kiwi.api.generic.PageResult
 import de.kiwi.api.util.buildJsonArray
 import de.kiwi.api.util.buildJsonObject
@@ -237,7 +237,7 @@ private fun ArrayNode.arrayMap(mapper: (JsonNode) -> Any?): JsonNode {
 
 private fun ObjectNode.entriesMap(mapper: (JsonNode) -> Any?): JsonNode {
     return buildJsonObject {
-        this@entriesMap.fieldNames().forEach { key ->
+        this@entriesMap.propertyNames().forEach { key ->
             val value = mapper(this@entriesMap.get(key)) as? JsonNode
             replace(key, value)
         }

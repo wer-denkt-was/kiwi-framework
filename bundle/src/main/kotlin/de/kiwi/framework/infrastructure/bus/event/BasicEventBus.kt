@@ -5,11 +5,13 @@ import de.kiwi.api.application.event.EventBus
 import de.kiwi.api.application.event.EventSubscriber
 import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.framework.infrastructure.bus.HandlerCache
+import java.util.concurrent.CopyOnWriteArrayList
 
 class BasicEventBus(
     private val enableCaching: Boolean,
 ) : EventBus.Configurable {
-    private val subscribers = ArrayList<EventSubscriber<*>>()
+    // Copy-on-write list allows lock-free subscriber lookups, as subscribers are registered rarely
+    private val subscribers = CopyOnWriteArrayList<EventSubscriber<*>>()
     private val cache = HandlerCache(::findSubscribers)
 
     val cacheHitRate: Double get() = cache.hitRate()
@@ -18,6 +20,7 @@ class BasicEventBus(
         synchronized(subscribers) {
             if (subscribers.none { it === subscriber }) {
                 subscribers.add(subscriber)
+                cache.invalidate()
             }
         }
     }

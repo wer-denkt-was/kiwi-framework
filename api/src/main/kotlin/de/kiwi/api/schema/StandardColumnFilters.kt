@@ -240,7 +240,8 @@ class StandardColumnFilterConversion(
 
     private fun <T, M> convertDefault(input: Any, columnType: ColumnType<T, M>): T {
         // Default conversion: (input: Any) --[conversionService]-> (columnValue: M) --[parse]-> (attributeValue: T)
-        val columnValue = conversionService.convert(input, columnType.valueType)
+        @Suppress("UNCHECKED_CAST")
+        val columnValue = conversionService.convert(input, columnType.valueType as Class<M & Any>)
             ?: throw ColumnFilterConversion.ConversionFailed("null")
 
         try {

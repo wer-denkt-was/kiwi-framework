@@ -1,6 +1,8 @@
 package de.kiwi.api.domain
 
-import jakarta.persistence.*
+import jakarta.persistence.Column
+import jakarta.persistence.EmbeddedId
+import jakarta.persistence.MappedSuperclass
 import java.io.Serializable
 
 /**

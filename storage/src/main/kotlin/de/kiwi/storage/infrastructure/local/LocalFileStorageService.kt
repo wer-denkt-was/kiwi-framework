@@ -1,6 +1,5 @@
 package de.kiwi.storage.infrastructure.local
 
-import de.kiwi.api.application.service.AuthenticationTokenService
 import de.kiwi.api.application.service.FileStorageService
 import de.kiwi.storage.KiwiStorageProperties
 import de.kiwi.storage.infrastructure.fileChecksumSha256
@@ -8,10 +7,6 @@ import de.kiwi.storage.infrastructure.formatChecksum
 import jakarta.servlet.ServletContext
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
-import org.springframework.security.core.Authentication
-import org.springframework.security.core.GrantedAuthority
-import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.util.unit.DataSize
 import org.springframework.web.context.request.RequestContextHolder
 import org.springframework.web.context.request.ServletRequestAttributes
@@ -26,7 +21,7 @@ import java.util.*
 import kotlin.io.path.fileSize
 
 class LocalFileStorageService(
-    private val tokenService: AuthenticationTokenService,
+    private val tokenService: LocalFileTokenService,
     private val props: KiwiStorageProperties.LocalFileProperties,
     private val servletContext: ServletContext?,
 ) : FileStorageService {
@@ -40,29 +35,12 @@ class LocalFileStorageService(
 
         private val FILE_PATH_REGEX = Regex("/(?<uuid>[0-9a-f\\-]+)/(?<filename>.+)", RegexOption.IGNORE_CASE)
 
-        private const val SIGNED_FILE_PRINCIPAL = "SIGNED_FILE_TOKEN"
-        private const val SIGNED_FILE_READ_ROLE_PREFIX = "READ_FILE:"
         private const val PUBLIC_ACCESS_METAFILE = ".__public__."
-
-        private fun generateSignedAuthority(uuid: UUID): GrantedAuthority {
-            return SimpleGrantedAuthority(SIGNED_FILE_READ_ROLE_PREFIX + uuid.toString())
-        }
-
-        private fun Authentication.hasSignedFileAuthority(uuid: UUID): Boolean {
-            val expectedSuffix = uuid.toString()
-            return name == SIGNED_FILE_PRINCIPAL && authorities.any { it.isReadFileAuthority(expectedSuffix) }
-        }
-
-        private fun GrantedAuthority.isReadFileAuthority(expectedSuffix: String): Boolean {
-            return authority.startsWith(SIGNED_FILE_READ_ROLE_PREFIX) &&
-                    expectedSuffix == authority.substring(SIGNED_FILE_READ_ROLE_PREFIX.length)
-        }
     }
 
     fun accessFileResource(uuid: UUID, filename: String, signedToken: String?): Resource? {
         val filePath = resolveFilePath(uuid, filename)
-        val signedTokenAuthentication = signedToken?.let { tokenService.authenticateToken(it) }
-        val authorized = isFileAccessAuthorized(filePath, uuid, signedTokenAuthentication)
+        val authorized = isFileAccessAuthorized(filePath, uuid, signedToken)
         return if (authorized) FileSystemResource(filePath) else null
     }
 
@@ -107,10 +85,10 @@ class LocalFileStorageService(
     }
 
     private fun localFileStoragePath(): String {
-        val contextPath = servletContext?.contextPath?.removeSuffix("/") ?: ""
-        val storageEndpoint = LOCAL_STORAGE_ENDPOINT.removePrefix("/")
-        return if (contextPath.isEmpty()) "/$storageEndpoint"
-        else "/$contextPath/$storageEndpoint"
+        // Servlet context path is either empty or starts with "/", e.g. "/ctx"
+        val contextPath = servletContext?.contextPath?.trim('/') ?: ""
+        return if (contextPath.isEmpty()) LOCAL_STORAGE_ENDPOINT
+        else "/$contextPath$LOCAL_STORAGE_ENDPOINT"
     }
 
     private fun createFileUriBuilder(): UriComponentsBuilder {
@@ -157,9 +135,7 @@ class LocalFileStorageService(
 
     override fun signFileUri(fileUri: URI, duration: Duration): FileStorageService.SignedFileUri {
         val (uuid, _) = parseFileUri(fileUri)
-        val authorities = setOf(generateSignedAuthority(uuid))
-        val fileAccessAuthentication = UsernamePasswordAuthenticationToken(SIGNED_FILE_PRINCIPAL, null, authorities)
-        val (signedToken, expiresOn) = tokenService.generateTemporaryToken(fileAccessAuthentication, duration)
+        val (signedToken, expiresOn) = tokenService.generateToken(uuid, duration)
 
         val signedUri = UriComponentsBuilder
             .fromUri(fileUri)
@@ -184,8 +160,14 @@ class LocalFileStorageService(
     }
 
     private fun parseFileUri(fileUri: URI): Pair<UUID, String> {
+        // Strip the storage path including the servlet context path, or the storage endpoint only
         val endpointPath = fileUri.path
-        val filePath = endpointPath.removePrefix(LOCAL_STORAGE_ENDPOINT)
+        val storagePath = localFileStoragePath()
+        val filePath = when {
+            endpointPath.startsWith("$storagePath/") -> endpointPath.removePrefix(storagePath)
+            endpointPath.startsWith("$LOCAL_STORAGE_ENDPOINT/") -> endpointPath.removePrefix(LOCAL_STORAGE_ENDPOINT)
+            else -> throw IllegalArgumentException("Invalid local file URI")
+        }
         val pathMatch = FILE_PATH_REGEX.matchEntire(filePath)
             ?: throw IllegalArgumentException("Invalid local file URI")
 
@@ -213,13 +195,13 @@ class LocalFileStorageService(
     private fun isFileAccessAuthorized(
         filePath: Path,
         fileUuid: UUID,
-        signedTokenAuthentication: Authentication?,
+        signedToken: String?,
     ): Boolean {
         // Skip authorization check if public-access metafile exists
         if (isPublicAccessFile(filePath)) return true
 
-        // Check if given authentication has a signed-file authority
-        return signedTokenAuthentication?.hasSignedFileAuthority(fileUuid) ?: false
+        // Check if given token grants access to the file
+        return signedToken != null && tokenService.verifyToken(signedToken, fileUuid)
     }
 }
 

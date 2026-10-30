@@ -3,7 +3,8 @@ package de.kiwi.framework.support
 import de.kiwi.api.util.slf4j
 import org.springframework.beans.factory.findAnnotationOnBean
 import org.springframework.beans.factory.getBeanNamesForAnnotation
-import org.springframework.boot.autoconfigure.domain.EntityScan
+import org.springframework.boot.autoconfigure.AutoConfigurationPackages
+import org.springframework.boot.persistence.autoconfigure.EntityScanPackages
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
 import org.springframework.context.annotation.ComponentScan
@@ -108,10 +109,17 @@ internal class ClasspathSupport(
         }
     }
 
+    /**
+     * Find entity-scan packages, as declared by `@EntityScan`, and the auto-configuration packages.
+     * Both may include packages registered by Kiwi auto-configurations.
+     */
     fun findEntityScanPackages(context: ApplicationContext): List<String> {
         log.debug("Scanning for EntityScan packages in [${context.id}] ...")
-        return annotatedBeanClasses<EntityScan>(context)
-            .flatMap { (cls, a) -> packagesFromAnnotation(cls, a.basePackages, a.basePackageClasses) }
+        val entityScanPackages = EntityScanPackages.get(context).packageNames
+        val autoConfigurationPackages =
+            if (AutoConfigurationPackages.has(context)) AutoConfigurationPackages.get(context) else emptyList()
+        return (entityScanPackages + autoConfigurationPackages)
+            .distinct()
             .onEach { log.debug("> Found EntityScan package: $it") }
     }
 

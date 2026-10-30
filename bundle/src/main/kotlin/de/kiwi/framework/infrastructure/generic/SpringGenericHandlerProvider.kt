@@ -1,13 +1,12 @@
 package de.kiwi.framework.infrastructure.generic
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.exc.MismatchedInputException
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.exc.MismatchedInputException
 import de.kiwi.api.domain.Command
 import de.kiwi.api.domain.EntityId
 import de.kiwi.api.domain.EntityMethodUnavailable
 import de.kiwi.api.domain.EntityMismatchedInput
-import de.kiwi.api.generic.*
 import de.kiwi.api.generic.*
 import de.kiwi.api.util.lookupSupertypeArgument
 import de.kiwi.api.util.slf4j
@@ -45,29 +44,32 @@ class SpringGenericHandlerProvider(
         val genericUpdateClasses = classPathScanner.findClassesOfTypeInPackages<GenericUpdate<*, *>>(basePackages)
         val genericDeleteClasses = classPathScanner.findClassesOfTypeInPackages<GenericDelete<*, *>>(basePackages)
         val genericQueryClasses = classPathScanner.findClassesOfTypeInPackages<GenericEntityQuery<*>>(basePackages)
-        val genericCreates = genericCreateClasses.associateBy { it.lookupSupertypeArgument<GenericCreate<*>>(0) }
-        val genericUpdates = genericUpdateClasses.associateBy { it.lookupSupertypeArgument<GenericUpdate<*, *>>(0) }
-        val genericDeletes = genericDeleteClasses.associateBy { it.lookupSupertypeArgument<GenericDelete<*, *>>(0) }
-        val genericQueries = genericQueryClasses.associateBy { it.lookupSupertypeArgument<GenericEntityQuery<*>>(0) }
+        val genericCreates = genericCreateClasses.map { it.lookupSupertypeArgument<GenericCreate<*>>(0) to it }
+        val genericUpdates = genericUpdateClasses.map { it.lookupSupertypeArgument<GenericUpdate<*, *>>(0) to it }
+        val genericDeletes = genericDeleteClasses.map { it.lookupSupertypeArgument<GenericDelete<*, *>>(0) to it }
+        val genericQueries = genericQueryClasses.map { it.lookupSupertypeArgument<GenericEntityQuery<*>>(0) to it }
 
         // Find classes annotated with @CustomCreate, @CustomUpdate and @CustomDelete
         val customCreateClasses = classPathScanner.findAnnotatedClassesInPackages<CreateCommand>(basePackages)
         val customUpdateClasses = classPathScanner.findAnnotatedClassesInPackages<UpdateCommand>(basePackages)
         val customDeleteClasses = classPathScanner.findAnnotatedClassesInPackages<DeleteCommand>(basePackages)
-        val customCreates =
-            customCreateClasses.associate { it.commandAnnotation<CreateCommand> { c -> c.value } to it.asCommand() }
-        val customUpdates =
-            customUpdateClasses.associate { it.commandAnnotation<UpdateCommand> { c -> c.value } to it.asCommand() }
-        val customDeletes =
-            customDeleteClasses.associate { it.commandAnnotation<DeleteCommand> { c -> c.value } to it.asCommand() }
+        val customCreates = customCreateClasses.map { it.commandAnnotation<CreateCommand> { c -> c.value } to it.asCommand() }
+        val customUpdates = customUpdateClasses.map { it.commandAnnotation<UpdateCommand> { c -> c.value } to it.asCommand() }
+        val customDeletes = customDeleteClasses.map { it.commandAnnotation<DeleteCommand> { c -> c.value } to it.asCommand() }
 
-        createTypes = genericCreates + customCreates
-        updateTypes = genericUpdates + customUpdates
-        deleteTypes = genericDeletes + customDeletes
-        queryTypes = genericQueries
+        // Each entity type may only have a single command/query class per method
+        createTypes = (genericCreates + customCreates).toUniqueMap(method = "create command")
+        updateTypes = (genericUpdates + customUpdates).toUniqueMap(method = "update command")
+        deleteTypes = (genericDeletes + customDeletes).toUniqueMap(method = "delete command")
+        queryTypes = genericQueries.toUniqueMap(method = "query")
+
+        // Instantiate generic create/update commands once, failing on invalid body property declarations
+        (createTypes.values + updateTypes.values)
+            .filter { GenericBodyCommand::class.java.isAssignableFrom(it) }
+            .forEach { validateGenericBodyCommand(it) }
 
         // Log create, update and query commands/queries grouped by entity type
-        val entityTypes = (createTypes.keys + updateTypes.keys + queryTypes.keys).distinct()
+        val entityTypes = (createTypes.keys + updateTypes.keys + deleteTypes.keys + queryTypes.keys).distinct()
         entityTypes.forEach { entityType ->
             val query = queryTypes[entityType]
             val create = createTypes[entityType]
@@ -82,9 +84,9 @@ class SpringGenericHandlerProvider(
             ?: throw EntityMethodUnavailable(entityType, EntityMethodUnavailable.EntityMethod.Create)
 
         return if (GenericCreate::class.java.isAssignableFrom(createType)) {
-            // Instantiate generic command and assign body JSON data
+            // Instantiate generic command and bind body JSON data
             val genericCreate = BeanUtils.instantiateClass(createType) as GenericCreate<*>
-            genericCreate.jsonBody = body
+            genericCreate.bind(body, objectMapper)
             genericCreate
         } else {
             // Instantiate command annotated with @CreateCommand from body JSON data
@@ -100,12 +102,12 @@ class SpringGenericHandlerProvider(
 
         @Suppress("UNCHECKED_CAST")
         if (GenericUpdate::class.java.isAssignableFrom(updateType)) {
-            // Instantiate GenericUpdate command, assign ID and JSON body
+            // Instantiate GenericUpdate command, assign ID and bind JSON body
             val entityIdType = updateType.lookupSupertypeArgument<GenericUpdate<*, *>>(1)
             val typedEntityId = id.cast(entityIdType as Class<EntityId>)
             val command = BeanUtils.instantiateClass(updateType) as GenericUpdate<*, EntityId>
             command.entityId = typedEntityId
-            command.jsonBody = body
+            command.bind(body, objectMapper)
             return command
         } else {
             // Instantiate command annotated with @UpdateCommand
@@ -149,6 +151,18 @@ class SpringGenericHandlerProvider(
         return BeanUtils.instantiateClass(queryType) as GenericEntityQuery<E>
     }
 
+    private fun validateGenericBodyCommand(commandType: Class<out Command<*>>) {
+        val command = BeanUtils.instantiateClass(commandType) as GenericBodyCommand<*>
+        command.bodyFields
+            .filter { it.source.schemaField != null && it.jsonKey != it.propertyName }
+            .forEach { field ->
+                log.warn(
+                    "Generic command [${commandType.name}]: Property [${field.propertyName}] is bound to " +
+                        "JSON key [${field.jsonKey}] of schema field ${field.source.schemaField}"
+                )
+            }
+    }
+
     private fun <C : Command<*>> lookupEntityIdConstructor(commandType: Class<C>): Constructor<C> {
         val constructor = BeanUtils.getResolvableConstructor(commandType)
         if (constructor.parameterCount != 1) {
@@ -171,6 +185,23 @@ class SpringGenericHandlerProvider(
             throw EntityMismatchedInput(entityType, mismatchedFields)
         }
     }
+}
+
+/**
+ * Associate command/query classes by their entity type, failing if an entity type has multiple classes.
+ * The duplicate classes would otherwise silently replace each other, depending on the classpath scan order.
+ */
+private fun <C> List<Pair<Class<*>, Class<out C>>>.toUniqueMap(method: String): Map<Class<*>, Class<out C>> {
+    // Overlapping scan packages may find the same class multiple times
+    val classesByEntityType = groupBy({ it.first }, { it.second }).mapValues { (_, classes) -> classes.distinct() }
+    val duplicates = classesByEntityType.filterValues { it.size > 1 }
+    check(duplicates.isEmpty()) {
+        val details = duplicates.entries.joinToString("; ") { (entityType, classes) ->
+            "${entityType.name} -> ${classes.joinToString { it.name }}"
+        }
+        "Duplicate generic $method classes found for entity types: $details"
+    }
+    return classesByEntityType.mapValues { (_, classes) -> classes.single() }
 }
 
 @Suppress("UNCHECKED_CAST")

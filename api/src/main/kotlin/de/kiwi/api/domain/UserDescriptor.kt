@@ -26,8 +26,12 @@ interface UserDescriptor : Serializable {
     /** Underlying principal of the user's authentication, like `UserDetails` or `JWT` */
     val principal: Any?
 
-    /** Flag if the user is an administrator, by default if the user is granted the [Roles.ADMIN] role */
-    val isAdmin get() = roles.contains(Roles.ADMIN)
+    /**
+     * Flag if the user is an administrator, by default if the user is granted the [Roles.ADMIN] role
+     * @see hasRole
+     * @see Roles.ADMIN
+     */
+    val isAdmin get() = hasRole(Roles.ADMIN)
 
     /** Check if the user's granted roles contain the given role, case-insensitive */
     fun hasRole(role: String) = roles.any { it.equals(role, ignoreCase = true) }

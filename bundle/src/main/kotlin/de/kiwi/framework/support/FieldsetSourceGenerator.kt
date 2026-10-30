@@ -1,15 +1,15 @@
 package de.kiwi.framework.support
 
-import com.fasterxml.jackson.databind.JavaType
-import com.fasterxml.jackson.databind.type.TypeFactory
 import de.kiwi.api.domain.Command
 import de.kiwi.api.domain.EntityId
-import de.kiwi.api.generic.GenericEntityCommand
+import de.kiwi.api.generic.*
 import de.kiwi.api.schema.*
 import de.kiwi.api.util.slf4j
 import de.kiwi.framework.support.FieldsetSourceRenderer.*
 import org.springframework.beans.BeanInstantiationException
 import org.springframework.beans.BeanUtils
+import tools.jackson.databind.JavaType
+import tools.jackson.databind.type.TypeFactory
 import java.lang.reflect.Modifier
 import java.lang.reflect.Type
 
@@ -19,8 +19,18 @@ data class FieldsetSources(
     val fieldsetAggregates: List<FieldsetsAvailable<*>>,
     val createCommandTypes: List<Class<out Command<*>>>,
     val updateCommandTypes: List<Class<out Command<*>>>,
-    val genericCommandTypes: List<Class<out GenericEntityCommand<*>>>,
-)
+    val genericCreateTypes: List<Class<out GenericCreate<*>>>,
+    val genericUpdateTypes: List<Class<out GenericUpdate<*, *>>>,
+) {
+    val allCreateTypes: List<Class<out Command<*>>>
+        get() = createCommandTypes + genericCreateTypes
+
+    val allUpdateTypes: List<Class<out Command<*>>>
+        get() = updateCommandTypes + genericUpdateTypes
+
+    val genericCommandTypes: List<Class<out GenericBodyCommand<*>>>
+        get() = genericCreateTypes + genericUpdateTypes
+}
 
 interface FieldsetSourceRenderer {
     fun moduleFileName(moduleName: String): String
@@ -56,7 +66,7 @@ interface FieldsetSourceRenderer {
 
 private val log = slf4j<FieldsetSourceGenerator>()
 
-private val jacksonTypeFactory = TypeFactory.defaultInstance()!!
+private val jacksonTypeFactory = TypeFactory.createDefaultInstance()
 private fun jacksonJavaType(type: Type) = jacksonTypeFactory.constructType(type)
 
 internal class FieldsetSourceGenerator(
@@ -89,7 +99,7 @@ internal class FieldsetSourceGenerator(
                 generateSchemaType(
                     schema = entitySchema,
                     fieldsetAggregates = sources.fieldsetAggregates,
-                    entityClassHierarchy = entityClassHierarchy
+                    entityClassHierarchy = entityClassHierarchy,
                 )
             }
 
@@ -99,7 +109,7 @@ internal class FieldsetSourceGenerator(
                 generateAllFieldsetInterfaces(
                     fieldsets = fieldsetAggregate,
                     fieldsetTypeNames = fieldsetTypeNames,
-                    entityClassHierarchy = entityClassHierarchy
+                    entityClassHierarchy = entityClassHierarchy,
                 )
             }
 
@@ -149,7 +159,7 @@ internal class FieldsetSourceGenerator(
                 declareField(
                     fieldName = toMany.fieldName,
                     fieldType = FieldType.Array(FieldType.Pair(keyFieldType, valueFieldType)),
-                    optional = true
+                    optional = true,
                 )
             }
             schema.subtypeReferences.forEach { subtype ->
@@ -157,15 +167,23 @@ internal class FieldsetSourceGenerator(
                 declareField(
                     fieldName = subtype.fieldName,
                     fieldType = FieldType.Nullable(subSchemaType),
-                    optional = false,
-                    mutable = false,
+                    optional = true,
                 )
             }
         }
     }
 
     private fun columnFieldType(column: ColumnField<*, *, *>, entityClassHierarchy: ClassHierarchyIndex): FieldType {
-        val fieldType = when (val columnType = column.type) {
+        val fieldType = columnValueFieldType(column, entityClassHierarchy)
+        return if (column.nullable) FieldType.Nullable(fieldType)
+        else fieldType
+    }
+
+    private fun columnValueFieldType(
+        column: ColumnField<*, *, *>,
+        entityClassHierarchy: ClassHierarchyIndex,
+    ): FieldType {
+        return when (val columnType = column.type) {
             is EntityIdColumnType<*> -> FieldType.IdType(columnType.entityIdType, columnType.valueType)
             is EnumColumnType<*> -> FieldType.Leaf(jacksonJavaType(columnType.enumType))
             is EntityClassNameType if (column.selector is ColumnSelector.EntityTypeSelector<*>) ->
@@ -176,8 +194,6 @@ internal class FieldsetSourceGenerator(
 
             else -> FieldType.Leaf(jacksonJavaType(columnType.valueType))
         }
-        return if (column.nullable) FieldType.Nullable(fieldType)
-        else fieldType
     }
 
     private fun entityClassNameFieldType(
@@ -238,12 +254,12 @@ internal class FieldsetSourceGenerator(
                     typeName = typeName,
                     fieldset = fieldset,
                     fieldsetTypeNames = fieldsetTypeNames,
-                    entityClassHierarchy = entityClassHierarchy
+                    entityClassHierarchy = entityClassHierarchy,
                 )
 
                 is SingleColumnFieldset<*, *, *> -> generateFieldsetTypeAlias(
                     typeName = typeName,
-                    valueType = fieldset.singleColumn.type.valueType
+                    valueType = fieldset.singleColumn.type.valueType,
                 )
 
                 is SingleValueFieldset<*, *> -> Unit // Ignore single-value fieldsets
@@ -376,7 +392,7 @@ internal class FieldsetSourceGenerator(
     }
 
     private fun FileBuilder.generateGenericCommandInterface(
-        genericCommandType: Class<out GenericEntityCommand<*>>,
+        genericCommandType: Class<out GenericBodyCommand<*>>,
         entityClassHierarchy: ClassHierarchyIndex,
     ) {
         val commandInstance = try {
@@ -386,18 +402,37 @@ internal class FieldsetSourceGenerator(
             return
         }
 
-        // Generate interface for generic command, including all non-primary columns
-        val schema = commandInstance.entityFieldset.schema
+        // Generate interface for generic command from its declared body fields
+        // Update commands are patches, all fields are optional
+        val create = commandInstance is GenericCreate<*>
         declareInterface(genericCommandType.simpleName) {
-            schema.columns.filterNot { it.isReadOnly }.forEach { column ->
+            commandInstance.bodyFields.forEach { field ->
                 declareField(
-                    fieldName = column.fieldName,
-                    fieldType = columnFieldType(column, entityClassHierarchy),
-                    optional = true,
+                    fieldName = field.jsonKey,
+                    fieldType = bodyFieldType(field, entityClassHierarchy),
+                    optional = !create || !field.required,
                     mutable = true,
                 )
             }
         }
+    }
+
+    private fun bodyFieldType(field: GenericBodyField<*>, entityClassHierarchy: ClassHierarchyIndex): FieldType {
+        val fieldType = when (val source = field.source) {
+            is GenericBodyFieldSource.Schema -> columnValueFieldType(source.schemaField, entityClassHierarchy)
+
+            is GenericBodyFieldSource.Property -> FieldType.Leaf(jacksonJavaType(field.valueType))
+
+            is GenericBodyFieldSource.ToOneReference -> FieldType.IdType(field.referencedIdType!!, String::class.java)
+
+            is GenericBodyFieldSource.ToManyReferences ->
+                FieldType.Array(FieldType.IdType(field.referencedIdType!!, String::class.java))
+
+            is GenericBodyFieldSource.Subtype -> FieldType.Union(source.subtypes.keys.map { FieldType.Literal(it) })
+        }
+
+        return if (field.nullable) FieldType.Nullable(fieldType)
+        else fieldType
     }
 }
 

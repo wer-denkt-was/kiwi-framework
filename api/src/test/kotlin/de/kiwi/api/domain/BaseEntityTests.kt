@@ -9,10 +9,10 @@ import org.junit.jupiter.api.function.Executable
 
 class BaseEntityTests {
     @Embeddable
-    private class TestId(value: Long) : EntityId(value)
+    class TestId(value: Long) : EntityId(value)
 
     @Embeddable
-    private class DifferentId(value: Long) : EntityId(value)
+    class DifferentId(value: Long) : EntityId(value)
 
     @Test
     fun generate() {

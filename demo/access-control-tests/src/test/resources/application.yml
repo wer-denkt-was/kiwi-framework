@@ -13,9 +13,6 @@ spring:
         criteria.value_handling_mode: inline
         session_factory.statement_inspector: de.kiwi.demo.access.instrument.HibernateStatementCallbackInspector
     show-sql: true
-kiwi:
-  jwt:
-    enabled: false
 logging:
   level:
     org.hibernate.tool.schema.internal: error

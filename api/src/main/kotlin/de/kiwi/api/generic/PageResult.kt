@@ -14,7 +14,7 @@ data class PageResult<T>(
     val totalItems: Long,
 ) : Iterable<T> by items {
     companion object {
-        fun <T> fromPage(page: SpringDataPage<T>) = PageResult<T>(
+        fun <T : Any> fromPage(page: SpringDataPage<T>) = PageResult<T>(
             items = page.content,
             pageSize = page.size,
             pageNumber = page.number,

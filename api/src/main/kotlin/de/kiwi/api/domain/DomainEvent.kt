@@ -23,7 +23,8 @@ abstract class DomainEvent(
 abstract class SubjectDomainEvent<T : Any>(
     val subject: T,
     clock: Clock = Clock.systemUTC(),
+    user: UserDescriptor? = null,
 ) : DomainEvent(clock) {
     abstract val detailsProvider: DetailsProvider<T>
-    override val details by lazy { detailsProvider.toDetails(subject) }
+    override val details by lazy { detailsProvider.toDetails(subject, user) }
 }

@@ -11,32 +11,41 @@ import de.kiwi.demo.domain.TodoItemId
 import de.kiwi.demo.domain.TodoList
 import de.kiwi.demo.domain.TodoListId
 import de.kiwi.demo.domain.schema.TodoItemFieldsets
+import de.kiwi.demo.domain.schema.TodoItemSchema
 import de.kiwi.demo.domain.schema.TodoListFieldsets
+import de.kiwi.demo.domain.schema.TodoListSchema
 
 class CreateTodoList : GenericCreate<TodoList>() {
-    override fun entityId(entity: TodoList) = entity.id
-    override val entityFieldset = TodoListFieldsets.default
+    override val detailsProvider = TodoListFieldsets.default
+    val title by schema(TodoListSchema.title)
     override fun preAuthorize(user: UserDescriptor) = Unit //TODO: Implement authorization
 }
 
 class UpdateTodoList : GenericUpdate<TodoList, TodoListId>() {
-    override val entityFieldset = TodoListFieldsets.default
+    override val detailsProvider = TodoListFieldsets.default
+    val title by schema(TodoListSchema.title)
     override fun preAuthorize(user: UserDescriptor) = Unit //TODO: Implement authorization
 }
 
 class DeleteTodoList : GenericDelete<TodoList, TodoListId>() {
-    override val entityFieldset = TodoListFieldsets.default
+    override val detailsProvider = TodoListFieldsets.default
     override fun preAuthorize(user: UserDescriptor) = Unit //TODO: Implement authorization
 }
 
 class CreateTodoItem : GenericCreate<TodoItem>() {
-    override fun entityId(entity: TodoItem) = entity.id
-    override val entityFieldset = TodoItemFieldsets.default
+    override val detailsProvider = TodoItemFieldsets.default
+    val list by reference(TodoItemSchema.list)
+    val title by schema(TodoItemSchema.title)
+    val content by schema(TodoItemSchema.content)
     override fun preAuthorize(user: UserDescriptor) = Unit //TODO: Implement authorization
 }
 
 class UpdateTodoItem : GenericUpdate<TodoItem, TodoItemId>() {
-    override val entityFieldset = TodoItemFieldsets.default
+    override val detailsProvider = TodoItemFieldsets.default
+    val title by schema(TodoItemSchema.title)
+    val content by schema(TodoItemSchema.content)
+    val status by schema(TodoItemSchema.status)
+    val order by schema(TodoItemSchema.order)
     override fun preAuthorize(user: UserDescriptor) = Unit //TODO: Implement authorization
 }
 
@@ -45,6 +54,6 @@ data class MoveTodoItemToList(val itemId: TodoItemId, val targetListId: TodoList
 }
 
 class DeleteTodoItem : GenericDelete<TodoItem, TodoItemId>() {
-    override val entityFieldset = TodoItemFieldsets.default
+    override val detailsProvider = TodoItemFieldsets.default
     override fun preAuthorize(user: UserDescriptor) = Unit //TODO: Implement authorization
 }

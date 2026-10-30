@@ -39,13 +39,13 @@ sealed class AbstractSchema<E : Any, S> {
  * ```kt
  * object ExampleSchema : EntitySchema<Example>() {
  *   val id by entityId()
- *   val someAttribute by column(Example_.someAttribute)
- *   val mappedAttribute by column(Example_.someAttribute, ColumnType.map { it.transformSomehow() })
- *   val validatedAttribute by column(Example_.validatedAttribute, ColumnType.validate(someValidation))
- *   val parent by toOne(Example_.parent, ParentSchema)
- *   val parentId by parentEntityId(Example_.parent)
- *   val children by toMany(Example_.children, ChildSchema)
- *   override val defaultSort = Sort.by(Example_.SOME_ATTRIBUTE)
+ *   val someAttribute by column(Example::someAttribute)
+ *   val mappedAttribute by column(Example::someAttribute, ColumnType.map { it.transformSomehow() })
+ *   val validatedAttribute by column(Example::validatedAttribute, ColumnType.validate(someValidation))
+ *   val parent by toOne(Example::parent, ParentSchema)
+ *   val parentId by parentEntityId(Example::parent)
+ *   val children by toMany(Example::children, ChildSchema)
+ *   override val defaultSort = Sort.by("someAttribute")
  * }
  * ```
  * @param E Queried entity type
@@ -751,51 +751,25 @@ data class SubtypeField<E : Any, C : E, CS>(
 
     /**
      * Returns a [Path] representing the given [base] path "treated as" the child entity type [C], allowing access to
-     * subtype-specific attributes in a query while preserving `LEFT JOIN` semantics (i.e. parent entities with no
-     * matching child row are **not** filtered out).
+     * subtype-specific attributes in a query while preserving `LEFT JOIN` semantics (i.e. parent entities that are not
+     * instances of [C] are **not** filtered out).
      *
-     * ### Why not `CriteriaBuilder.treat()`?
+     * The returned path is the [base] path itself, cast to `Path<C>`: The cast only satisfies the compile-time types of
+     * the Criteria API, and has no effect on the generated SQL. Subtype attributes are resolved explicitly when they are
+     * accessed through the returned path, see [de.kiwi.api.util.getIncludingSubtypes] (columns) and
+     * [de.kiwi.api.util.joinIncludingSubtypes] (singular and plural relations). Since Hibernate 7, attributes declared on
+     * a subclass are no longer resolved implicitly by name on a path of the parent entity type.
      *
-     * The natural implementation would be `builder.treat(base, subtypeSchema.entityClass)`. However, calling `treat()`
-     * on a `Root` or `Join` causes Hibernate to narrow the join to an **inner join** on the subtype's table, silently
-     * filtering out all parent entities that are not instances of [C]. This contradicts the intent here, where subtype
-     * fields are **optional** (nullable) and non-instances should still appear in the result set.
-     *
-     * This is a known Hibernate behavior (not strictly a bug — the JPA spec leaves join type unspecified for `treat()`).
-     *
-     * ### Why does this workaround actually work?
-     *
-     * Casting `base` directly to `Path<C>` is a lie to the Kotlin/Java type system — at runtime, the object remains a
-     * `Path<E>`. This works because Hibernate's path resolution logic does not solely inspect the static Java type of
-     * the path. When resolving an attribute name against a path, Hibernate calls
-     * `EntityTypeImpl.findSubPathSource(name, metamodel)`, which internally calls
-     * `findSubtypeAttribute(name, metamodel)` and therefore considers attributes declared on *known subclasses* of the
-     * path's entity type — not just the entity type itself.
-     *
-     * In other words: Hibernate already knows about the inheritance hierarchy and resolves subtype attributes
-     * transparently, without any explicit downcast in the Criteria tree. The cast we perform here is purely to satisfy
-     * the **compile-time** type system of the Criteria API on the returned path without a cast, and has no effect
-     * on the SQL that Hibernate ultimately generates.
-     *
-     * The net result is that Hibernate generates a `LEFT OUTER JOIN` to the subtype table (or omits the discriminator
-     * predicate for `SINGLE_TABLE` inheritance), which is precisely the behavior we need.
-     *
-     * ### Risk / Brittleness
-     *
-     * This relies on an internal Hibernate implementation detail (`findSubtypeAttribute`). It is not guaranteed by the
-     * JPA spec. If a future Hibernate version changes path resolution to enforce strict type checking on the path's
-     * declared entity type, this workaround will silently break (likely producing an "attribute not found" error at
-     * query construction time, not at compile time).
+     * `CriteriaBuilder.treat()` is not used intentionally: Hibernate narrows a treated `Root` or `Join` to the subtype,
+     * which filters out all parent entities that are not instances of [C]. Subtype fields are optional (nullable)
+     * instead, so non-instances must still appear in the result.
      *
      * @param base the [Path] for the parent entity type [E], typically a [Root] or [Join]
      * @param builder the [CriteriaBuilder] (unused in this implementation; retained for API consistency)
-     * @return a [Path] typed as [C], safe to use for accessing subtype attributes in a Criteria query
+     * @return the [base] path typed as [C], for accessing subtype attributes in a Criteria query
      */
     fun treatFrom(base: Path<E>, builder: CriteriaBuilder): Path<C> {
-        // Intentional unsafe cast — see KDoc above for a full explanation.
-        // DO NOT replace this with CriteriaBuilder.treat(): it causes an implicit inner join
-        // that filters out non-[C] parent entities, which breaks the "nullable subtype field" contract.
-        // God dammit, JPA. >:[
+        // Intentional unchecked cast, see KDoc: CriteriaBuilder.treat() would filter out non-[C] parent entities
         @Suppress("UNCHECKED_CAST")
         return base as Path<C>
     }

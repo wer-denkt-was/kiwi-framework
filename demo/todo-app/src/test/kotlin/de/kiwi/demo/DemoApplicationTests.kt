@@ -25,7 +25,7 @@ private val log = slf4j<DemoApplicationTests>()
     properties = [
         "spring.profiles.active=application-tests",
         "spring.datasource.url=jdbc:tc:mysql:latest:///kiwi-demo",
-        "kiwi.jwt.secret-key=00000000000000000000000000000000000000000000000000000000000000000000000000000000000000==",
+        "kiwi.storage.local.token.secret-key=00000000000000000000000000000000000000000000000000000000000000000000000000000000000000==",
     ]
 )
 @ContextConfiguration(classes = [DemoApplication::class])

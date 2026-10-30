@@ -1,6 +1,6 @@
 package de.kiwi.framework.web
 
-import com.fasterxml.jackson.databind.JsonNode
+import tools.jackson.databind.JsonNode
 import de.kiwi.api.application.service.CommandQueryBus
 import de.kiwi.api.application.service.EntityTypeProvider
 import de.kiwi.api.application.service.QuerySchemaProvider
@@ -18,14 +18,12 @@ import de.kiwi.framework.web.KiwiRouteHelper.Companion.FIELDS_PARAM
 import de.kiwi.framework.web.KiwiRouteHelper.Companion.ID_VARIABLE
 import org.springframework.core.convert.ConversionService
 import org.springframework.http.HttpStatus
-import org.springframework.stereotype.Component
 import org.springframework.web.bind.WebDataBinder
 import org.springframework.web.servlet.function.ServerRequest
 import org.springframework.web.servlet.function.ServerResponse
 import org.springframework.web.servlet.function.body
 import org.springframework.web.servlet.function.paramOrNull
 
-@Component
 class GenericEntityMethodHandler(
     private val commandQueryBus: CommandQueryBus,
     private val entityTypeProvider: EntityTypeProvider,

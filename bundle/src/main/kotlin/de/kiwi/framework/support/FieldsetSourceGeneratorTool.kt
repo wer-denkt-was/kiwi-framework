@@ -56,8 +56,9 @@ class FieldsetSourceGeneratorTool(
                     fieldsetAggregates = fieldsetAggregates,
                     createCommandTypes = customCreateClasses,
                     updateCommandTypes = customUpdateClasses,
-                    genericCommandTypes = (genericCreateClasses + genericUpdateClasses),
-                )
+                    genericCreateTypes = genericCreateClasses,
+                    genericUpdateTypes = genericUpdateClasses,
+                ),
             )
         }
 
@@ -86,7 +87,7 @@ class FieldsetSourceGeneratorTool(
 
     fun withBuildInfo(buildInfo: BuildProperties?) = FieldsetSourceGeneratorTool(
         sources = sources,
-        buildInfo = buildInfo ?: this.buildInfo
+        buildInfo = buildInfo ?: this.buildInfo,
     )
 
     fun generateBuildArtifacts(
@@ -109,9 +110,8 @@ class FieldsetSourceGeneratorTool(
         val buildTimestamp = buildInfo?.time ?: Instant.now()
 
         val fieldsetAggregateNames = sources.fieldsetAggregates.map { it.javaClass.simpleName }.sorted()
-        val createCommandNames = sources.createCommandTypes.map { it.simpleName }.sorted()
-        val updateCommandNames = sources.updateCommandTypes.map { it.simpleName }.sorted()
-        val genericCommandNames = sources.genericCommandTypes.map { it.simpleName }.sorted()
+        val createCommandNames = sources.allCreateTypes.map { it.simpleName }.sorted()
+        val updateCommandNames = sources.allUpdateTypes.map { it.simpleName }.sorted()
 
         val fileHeader = buildList {
             add("-- Kiwi Framework generated Fieldset types --")
@@ -119,7 +119,6 @@ class FieldsetSourceGeneratorTool(
             add("Fieldsets: ${fieldsetAggregateNames.joinToString(", ")}")
             add("Create commands: ${createCommandNames.joinToString(", ")}")
             add("Update commands: ${updateCommandNames.joinToString(", ")}")
-            add("Generic commands: ${genericCommandNames.joinToString(", ")}")
             buildInfo?.let {
                 add("Artifact: ${it.group}:${it.artifact}")
                 add("Version: ${it.version}")

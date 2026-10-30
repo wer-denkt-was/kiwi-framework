@@ -7,7 +7,7 @@ import de.kiwi.api.domain.EntityIdToNumberConverter
 import de.kiwi.api.domain.EntityIdToStringConverter
 import de.kiwi.api.domain.NumberToEntityIdConverterFactory
 import de.kiwi.api.domain.StringToEntityIdConverterFactory
-import de.kiwi.framework.infrastructure.bus.CommandQueryEventBusConfiguration
+import de.kiwi.framework.infrastructure.bus.KiwiBusAutoConfiguration
 import de.kiwi.framework.infrastructure.generic.*
 import de.kiwi.framework.infrastructure.olap.AnalyticalReportConfiguration
 import de.kiwi.framework.infrastructure.security.SpringUserDescriptorProvider
@@ -21,14 +21,15 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
-import org.springframework.boot.autoconfigure.domain.EntityScan
-import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
-import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase
-import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureDataJpa
-import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEntityManager
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.boot.persistence.autoconfigure.EntityScan
+import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration
+import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase
+import org.springframework.boot.data.jpa.test.autoconfigure.AutoConfigureDataJpa
+import org.springframework.boot.jpa.test.autoconfigure.AutoConfigureTestEntityManager
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories
@@ -54,6 +55,8 @@ import java.util.*
         "spring.jpa.properties.hibernate.format_sql=true",
         "spring.jpa.open-in-view=false",
         "spring.jpa.show-sql=true",
+        // Only the analytical report endpoints are under test, without generic entity handlers
+        "kiwi.web.generic-controller=false",
     ]
 )
 @Transactional
@@ -66,16 +69,8 @@ class AnalyticalReportControllerTest {
     @EnableWebMvc
     @EnableJpaRepositories
     @EntityScan("de.kiwi.api", "de.kiwi.framework.infrastructure.generic")
-    @Import(
-        // General framework configs
-        KiwiWebConfiguration::class,
-        AnalyticalReportConfiguration::class,
-        CommandQueryEventBusConfiguration::class,
-        // Specific components
-        AnalyticalReportMethodHandler::class,
-        KiwiRouterFunctionConfig::class,
-        KiwiRouteHelper::class,
-    )
+    @Import(AnalyticalReportConfiguration::class)
+    @ImportAutoConfiguration(KiwiWebAutoConfiguration::class, KiwiBusAutoConfiguration::class)
     class TestApplicationConfig : WebMvcConfigurer {
         @Bean
         fun userDescriptorProvider(): UserDescriptorProvider =

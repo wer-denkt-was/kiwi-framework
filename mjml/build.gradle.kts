@@ -1,15 +1,19 @@
 import com.github.gradle.node.npm.task.NpmTask
 
 plugins {
-    id("kiwi-common-convention")
-    id("kiwi-node-js-convention")
-    id("kiwi-maven-publish-convention")
+    id("de.kiwi.common-conventions")
+    id("de.kiwi.node-js-conventions")
+    id("de.kiwi.maven-publish-conventions")
 }
 
 dependencies {
-    implementation(project(":bundle"))
+    // The MJML module implements the MailTemplateRenderer SPI of the framework module
+    api(project(":bundle"))
     implementation(libs.bundles.graalvm.js)
     implementation("org.springframework.boot:spring-boot-starter")
+
+    // Annotation Processing
+    kapt("org.springframework.boot:spring-boot-configuration-processor")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
@@ -25,7 +29,7 @@ val npmBuildTask = tasks.register<NpmTask>("npmRunBuild") {
     args = listOf("run", "build")
 
     inputs.dir("node_modules")
-    inputs.files("index.js")
+    inputs.files("index.js", "polyfills.js", "package.json", "rolldown.config.mjs")
     outputs.dir("$projectDir/dist")
 
     dependsOn(tasks.npmInstall)
@@ -36,11 +40,9 @@ tasks.clean {
 }
 
 sourceSets {
-    java {
-        main {
-            resources {
-                srcDir(npmBuildTask)
-            }
+    main {
+        resources {
+            srcDir(npmBuildTask)
         }
     }
 }

@@ -5,7 +5,7 @@ import de.kiwi.api.schema.QuerySchemaService
 import de.kiwi.api.schema.buildFieldset
 import de.kiwi.api.schema.columnFieldset
 import de.kiwi.api.util.flushAndClear
-import de.kiwi.auditLog.application.AuditableDetailsSerializer
+import de.kiwi.auditlog.application.AuditableDetailsSerializer
 import de.kiwi.demo.access.application.LocationOccupantRepository
 import de.kiwi.demo.access.domain.*
 import de.kiwi.demo.access.domain.accessControl.readLocationOccupant

@@ -1,9 +1,9 @@
 package de.kiwi.framework.web
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.module.kotlin.jacksonObjectMapper
 import de.kiwi.api.schema.*
-import de.kiwi.framework.KiwiFrameworkConfiguration
+import de.kiwi.framework.SpringBootApplicationWithoutKiwi
 import de.kiwi.framework.infrastructure.generic.AuthorSchema
 import de.kiwi.framework.infrastructure.generic.PublicationFieldsets
 import de.kiwi.framework.infrastructure.generic.PublicationSchema
@@ -14,12 +14,11 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
-import org.springframework.boot.autoconfigure.domain.EntityScan
+import org.springframework.boot.persistence.autoconfigure.EntityScan
 import org.springframework.boot.jdbc.EmbeddedDatabaseConnection
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 
@@ -27,7 +26,7 @@ import org.springframework.context.annotation.ComponentScan
 @AutoConfigureTestDatabase(connection = EmbeddedDatabaseConnection.H2)
 class DynamicFieldsetParserTest {
 
-    @SpringBootApplication(exclude = [KiwiFrameworkConfiguration::class])
+    @SpringBootApplicationWithoutKiwi
     @ComponentScan("de.kiwi.framework.infrastructure.generic")
     @EntityScan("de.kiwi.api", "de.kiwi.framework.infrastructure.generic")
     class TestApplicationConfig {

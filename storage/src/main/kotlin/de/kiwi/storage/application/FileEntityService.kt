@@ -7,9 +7,7 @@ import de.kiwi.api.domain.UserDescriptor
 import de.kiwi.storage.domain.FileDeleted
 import de.kiwi.storage.domain.FileEntity
 import org.springframework.core.io.Resource
-import org.springframework.stereotype.Service
 
-@Service
 class FileEntityService(
     private val fileRepository: FileEntityRepository,
     private val storageService: FileStorageService,

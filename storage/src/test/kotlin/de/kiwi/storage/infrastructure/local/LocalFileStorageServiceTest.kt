@@ -1,8 +1,6 @@
 package de.kiwi.storage.infrastructure.local
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.node.JsonNodeFactory
-import de.kiwi.api.application.service.AuthenticationTokenService
+import de.kiwi.api.application.service.ClockProvider
 import de.kiwi.api.application.service.FileStorageService
 import de.kiwi.storage.KiwiStorageProperties
 import de.kiwi.storage.infrastructure.checksumSha256
@@ -16,10 +14,6 @@ import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.MediaType
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockServletContext
-import org.springframework.security.authentication.BadCredentialsException
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
-import org.springframework.security.core.Authentication
-import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.util.FileSystemUtils
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.util.MultiValueMap
@@ -40,9 +34,11 @@ class LocalFileStorageServiceTest {
 
     @BeforeEach
     fun setUp() {
+        val dummySecretKey = ByteArray(32) { it.toByte() }
+
         temporaryParentDirectory = Files.createTempDirectory("test-local-storage-")
         localFileStorageService = LocalFileStorageService(
-            tokenService = TestTokenService,
+            tokenService = HmacLocalFileTokenService(dummySecretKey, clockProvider = ClockProvider.SystemUTC),
             props = KiwiStorageProperties.LocalFileProperties(parentDirectory = temporaryParentDirectory),
             servletContext = MockServletContext(),
         )
@@ -66,13 +62,40 @@ class LocalFileStorageServiceTest {
                 filename = "test.txt",
                 contentType = MediaType.TEXT_PLAIN_VALUE,
                 resource = ByteArrayResource(content),
-            )
+            ),
         )
 
         println(result)
         assertThat(result.uri.toString(), stringContainsInOrder("http://test-server/file/storage/", "/test.txt"))
         assertThat(result.size.toBytes(), equalTo(content.size.toLong()))
         assertThat(result.sha256, equalTo(content.checksumSha256()))
+    }
+
+    @Test
+    fun servletContextPath() {
+        val servletContext = MockServletContext().apply { contextPath = "/ctx" }
+        val service = LocalFileStorageService(
+            tokenService = HmacLocalFileTokenService(ByteArray(32) { it.toByte() }, clockProvider = ClockProvider.SystemUTC),
+            props = KiwiStorageProperties.LocalFileProperties(parentDirectory = temporaryParentDirectory),
+            servletContext = servletContext,
+        )
+
+        val content = "Hello Context".toByteArray(Charsets.UTF_8)
+        val result = service.uploadFileData(
+            FileStorageService.FileUpload(
+                filename = "test.txt",
+                contentType = MediaType.TEXT_PLAIN_VALUE,
+                resource = ByteArrayResource(content),
+            ),
+        )
+        assertThat(result.uri.toString(), stringContainsInOrder("http://test-server/ctx/file/storage/", "/test.txt"))
+
+        // URIs including the context path can be signed, downloaded and deleted
+        val signed = service.signFileUri(result.uri, Duration.ofMinutes(1))
+        assertThat(signed.signedUri.path, startsWith("/ctx/file/storage/"))
+        service.downloadTemporaryFileData(result.uri) { assertArrayEquals(content, it.contentAsByteArray) }
+        service.deleteFileData(result.uri)
+        assertThrows(Exception::class.java) { service.downloadTemporaryFileData(result.uri) { } }
     }
 
     @Test
@@ -84,8 +107,8 @@ class LocalFileStorageServiceTest {
             FileStorageService.FileUpload(
                 filename = "mario.txt",
                 contentType = MediaType.TEXT_PLAIN_VALUE,
-                resource = ByteArrayResource(firstContent)
-            )
+                resource = ByteArrayResource(firstContent),
+            ),
         )
         val secondResult = localFileStorageService.uploadFileData(
             FileStorageService.FileUpload(
@@ -93,7 +116,7 @@ class LocalFileStorageServiceTest {
                 contentType = MediaType.TEXT_PLAIN_VALUE,
                 resource = ByteArrayResource(secondContent),
                 siblingFileUri = firstResult.uri, // <- Sibling of the first file
-            )
+            ),
         )
 
         // Common prefix should include UUID between siblings, as they are stored in the same directory
@@ -145,7 +168,7 @@ class LocalFileStorageServiceTest {
                 "http://test-server/file/storage/",
                 "/test.txt",
                 "?_signedToken=",
-            )
+            ),
         )
     }
 
@@ -173,6 +196,20 @@ class LocalFileStorageServiceTest {
         println("$signedFileUri => $fileResource")
         assertTrue(fileResource.exists())
         assertArrayEquals(content, fileResource.inputStream.readAllBytes())
+    }
+
+    @Test
+    fun privateFileAccessDeniedWithInvalidToken() {
+        val content = "You are NOT allowed to read this!".toByteArray(Charsets.UTF_8)
+        val privateFileUri = prepareUploadFile("test.txt", content, publicAccess = false)
+        val otherFileUri = prepareUploadFile("other.txt", content, publicAccess = false)
+        val otherSignedFileUri = localFileStorageService.signFileUri(otherFileUri, Duration.ofMinutes(30)).signedUri
+        val otherToken =
+            otherSignedFileUri.parseQueryParams().getFirst(LocalFileStorageService.LOCAL_STORAGE_TOKEN_PARAM)
+
+        val (uuid, filename) = prepareSplitFileUri(privateFileUri)
+        assertNull(localFileStorageService.accessFileResource(uuid, filename, signedToken = otherToken))
+        assertNull(localFileStorageService.accessFileResource(uuid, filename, signedToken = "invalid"))
     }
 
     @Test
@@ -221,49 +258,4 @@ private fun URI.parseQueryParams(): MultiValueMap<String, String> {
         params.add(name, value)
     }
     return params
-}
-
-private object TestTokenService : AuthenticationTokenService {
-    private const val PREFIX = "TEST:"
-
-    private val jsonMapper = ObjectMapper()
-    private val jsonFactory = JsonNodeFactory.instance!!
-    private val encoder = Base64.getUrlEncoder()
-    private val decoder = Base64.getUrlDecoder()
-
-    override fun generateToken(authentication: Authentication): String {
-        val roles = jsonFactory.arrayNode()
-        roles.addAll(authentication.authorities.map { jsonFactory.textNode(it.authority) })
-
-        val token = jsonFactory.objectNode()
-        token.replace("name", jsonFactory.textNode(authentication.name))
-        token.replace("roles", roles)
-
-        val tokenBytes = token.toString().toByteArray(Charsets.UTF_8)
-        return PREFIX + encoder.encodeToString(tokenBytes)
-    }
-
-    override fun generateTemporaryToken(
-        authentication: Authentication,
-        duration: Duration,
-    ): AuthenticationTokenService.TemporaryToken {
-        val token = generateToken(authentication)
-        return AuthenticationTokenService.TemporaryToken(token, expiresOn = null)
-    }
-
-    override fun authenticateToken(bearerToken: String): UsernamePasswordAuthenticationToken {
-        if (!bearerToken.startsWith(PREFIX)) {
-            throw BadCredentialsException("Invalid test token")
-        }
-
-        val tokenBase64 = bearerToken.removePrefix(PREFIX)
-        val tokenBytes = decoder.decode(tokenBase64)
-        val token = jsonMapper.readTree(tokenBytes)
-
-        val name = token.get("name").asText()
-        val roles = token.get("roles").map { it.asText() }
-        val authorities = roles.mapTo(HashSet()) { SimpleGrantedAuthority(it) }
-
-        return UsernamePasswordAuthenticationToken.authenticated(name, null, authorities)
-    }
 }

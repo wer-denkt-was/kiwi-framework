@@ -65,7 +65,7 @@ abstract class GenericEntityFilter<E : Any> : Specification<E> {
      */
     override fun toPredicate(
         root: Root<E>,
-        query: CriteriaQuery<*>?,
+        query: CriteriaQuery<*>,
         criteriaBuilder: CriteriaBuilder,
     ): Predicate? {
         return Specification
@@ -120,10 +120,15 @@ abstract class GenericEntityFilter<E : Any> : Specification<E> {
         fun isNotNull() = specification { root -> expression(root).isNotNull }
     }
 
-    private class ValueAndSpecification<E, T>(
+    private class ValueAndSpecification<E : Any, T>(
         val value: T,
         val specification: Specification<E>,
-    ) : Specification<E> by specification
+    ) : Specification<E> {
+        // Explicit override instead of delegation, because kapt stubs of delegated members
+        // copy the JSpecify type-use annotations of Specification, resulting in invalid Java stubs
+        override fun toPredicate(root: Root<E>, query: CriteriaQuery<*>, criteriaBuilder: CriteriaBuilder) =
+            specification.toPredicate(root, query, criteriaBuilder)
+    }
 
     protected interface LikeOperator {
         fun likePredicate(

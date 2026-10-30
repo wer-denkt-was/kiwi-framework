@@ -1,13 +1,13 @@
 package de.kiwi.framework.application.generic
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import de.kiwi.api.domain.*
-import de.kiwi.api.domain.*
-import de.kiwi.framework.*
 import de.kiwi.framework.example.ExampleEntity
 import de.kiwi.framework.example.ExampleId
 import de.kiwi.framework.example.UpdateExample
 import de.kiwi.framework.example.UpdateExampleHandler
+import de.kiwi.framework.matchEntityUpdated
+import de.kiwi.framework.matchExample
+import de.kiwi.framework.mergeAndDetach
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
 import org.hamcrest.MatcherAssert.assertThat
@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import tools.jackson.databind.ObjectMapper
 
 @ExampleDataJpaTest
 class GenericUpdateCommandHandlerTest {
@@ -30,6 +31,8 @@ class GenericUpdateCommandHandlerTest {
 
     private fun json(json: String) = objectMapper.readTree(json)
 
+    private fun UpdateExample.bindJson(json: String) = bind(json(json), objectMapper)
+
     @Test
     fun handleUpdate() {
         val (before, after, events) = executeUpdateExample(
@@ -37,7 +40,7 @@ class GenericUpdateCommandHandlerTest {
         ) {
             UpdateExample().apply {
                 // Update "name" field
-                jsonBody = json("""{ "name": "After Update" }""")
+                bindJson("""{ "name": "After Update" }""")
                 entityId = it.id
             }
         }
@@ -63,7 +66,7 @@ class GenericUpdateCommandHandlerTest {
         ) {
             UpdateExample().apply {
                 // Don't set any properties, no updates
-                jsonBody = json("{}")
+                bindJson("{}")
                 entityId = it.id
             }
         }
@@ -85,7 +88,7 @@ class GenericUpdateCommandHandlerTest {
         ) {
             UpdateExample().apply {
                 // Setting a nullable field to null works as expected
-                jsonBody = json("""{ "optional": null }""")
+                bindJson("""{ "optional": null }""")
                 entityId = it.id
             }
         }
@@ -99,12 +102,12 @@ class GenericUpdateCommandHandlerTest {
     @Test
     fun handleUpdateNullNotAllowed() {
         // Setting a non-nullable field to null will throw an exception
-        val exception = assertThrows(EntityFieldMissingValue::class.java) {
+        val bodyException = assertThrows(EntityBodyInvalid::class.java) {
             executeUpdateExample(
                 ExampleEntity.create(name = "Not null", optional = null).value
             ) {
                 UpdateExample().apply {
-                    jsonBody = json(
+                    bindJson(
                         // language=JSON
                         """{ "name": null }"""
                     )
@@ -112,6 +115,7 @@ class GenericUpdateCommandHandlerTest {
                 }
             }
         }
+        val exception = bodyException.errors.single() as EntityFieldMissingValue
         assertEquals(ExampleEntity::class.java.name, exception.args["entityType"])
         assertEquals("name", exception.args["fieldName"])
     }
@@ -119,10 +123,10 @@ class GenericUpdateCommandHandlerTest {
     @Test
     fun handleUpdateBlankNotAllowed() {
         // Setting a notBlank validated field to null will throw an exception
-        val exception = assertThrows(EntityFieldInvalid::class.java) {
+        val bodyException = assertThrows(EntityBodyInvalid::class.java) {
             executeUpdateExample(ExampleEntity.create(name = "Not blank", optional = null).value) {
                 UpdateExample().apply {
-                    jsonBody = json(
+                    bindJson(
                         // language=json
                         """{ "name": "   ", "optional": "name must not be blank" }"""
                     )
@@ -130,6 +134,8 @@ class GenericUpdateCommandHandlerTest {
                 }
             }
         }
+        assertEquals("entity-body-invalid", bodyException.code)
+        val exception = bodyException.errors.single() as EntityFieldInvalid
         assertEquals("entity-field-invalid", exception.code)
         assertEquals("name", exception.fieldName)
         assertEquals("not-blank", exception.reason)
@@ -140,7 +146,7 @@ class GenericUpdateCommandHandlerTest {
         val missingId = ExampleId(-1) // Negative ID is never valid
         val command = UpdateExample().apply {
             entityId = missingId
-            jsonBody = json("""{ "name": "This should not work!" }""")
+            bindJson("""{ "name": "This should not work!" }""")
         }
 
         val ex = assertThrows(EntityNotFound::class.java) {

@@ -11,8 +11,8 @@ import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
-import org.springframework.boot.autoconfigure.domain.EntityScan
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.springframework.boot.persistence.autoconfigure.EntityScan
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import java.lang.reflect.Method
 import kotlin.reflect.KProperty1
 import kotlin.reflect.jvm.javaField

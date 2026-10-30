@@ -2,6 +2,7 @@ package de.kiwi.framework.web
 
 import de.kiwi.api.application.service.UserDescriptorProvider
 import de.kiwi.api.domain.UserDescriptor
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.boot.SpringBootConfiguration
@@ -9,7 +10,7 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Import
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.toEntity
@@ -34,7 +35,6 @@ class KiwiManagementSecurityConfigTest {
 
     @SpringBootConfiguration
     @EnableAutoConfiguration
-    @Import(KiwiWebConfiguration::class, KiwiManagementSecurityConfig::class)
     class KiwiManagementSecurityConfigTestApplicationConfig {
 
         @Bean
@@ -57,37 +57,37 @@ class KiwiManagementSecurityConfigTest {
     @Test
     fun permitAnonymousRequestToPublicEndpoint() {
         val responseEntity = anonymousRequestTo("/actuator/health")
-        println(responseEntity)
+        assertEquals(HttpStatus.OK, responseEntity.statusCode)
     }
 
     @Test
     fun denyAnonymousRequestToSecuredEndpoint() {
         val responseEntity = anonymousRequestTo("/actuator/info")
-        println(responseEntity)
+        assertEquals(HttpStatus.UNAUTHORIZED, responseEntity.statusCode)
     }
 
     @Test
     fun allowAuthenticatedRequestToPublicEndpoint() {
         val responseEntity = authenticatedRequestTo("/actuator/health")
-        println(responseEntity)
+        assertEquals(HttpStatus.OK, responseEntity.statusCode)
     }
 
     @Test
     fun allowAuthenticatedRequestToSecuredEndpoint() {
         val responseEntity = authenticatedRequestTo("/actuator/info")
-        println(responseEntity)
+        assertEquals(HttpStatus.OK, responseEntity.statusCode)
     }
 
     @Test
     fun denyInvalidRequestToPublicEndpoint() {
         val responseEntity = invalidRequestTo("/actuator/health")
-        println(responseEntity)
+        assertEquals(HttpStatus.UNAUTHORIZED, responseEntity.statusCode)
     }
 
     @Test
     fun denyInvalidRequestToSecuredEndpoint() {
         val responseEntity = invalidRequestTo("/actuator/info")
-        println(responseEntity)
+        assertEquals(HttpStatus.UNAUTHORIZED, responseEntity.statusCode)
     }
 
     private fun anonymousRequestTo(endpoint: String): ResponseEntity<*> = testClient

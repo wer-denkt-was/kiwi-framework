@@ -8,15 +8,15 @@ import de.kiwi.api.schema.FieldsetValidationService
 import de.kiwi.framework.KiwiFrameworkProperties
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
-@Configuration
-@EnableConfigurationProperties(KiwiFrameworkProperties::class)
+@Configuration(proxyBeanMethods = false)
 class FieldsetValidationConfiguration(private val props: KiwiFrameworkProperties) {
 
     @Bean
+    @ConditionalOnMissingBean
     fun fieldsetValidationService(
         fieldsetValidationProvider: ObjectProvider<FieldsetValidation>,
     ): FieldsetValidationService {

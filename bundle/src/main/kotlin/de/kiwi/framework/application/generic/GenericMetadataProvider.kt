@@ -1,9 +1,5 @@
 package de.kiwi.framework.application.generic
 
-import com.fasterxml.jackson.databind.BeanDescription
-import com.fasterxml.jackson.databind.JavaType
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition
 import de.kiwi.api.application.service.EntityTypeProvider
 import de.kiwi.api.application.service.QuerySchemaProvider
 import de.kiwi.api.generic.*
@@ -11,7 +7,14 @@ import de.kiwi.api.schema.AbstractSchema
 import de.kiwi.api.schema.EntitySchema
 import de.kiwi.api.schema.SingleValueSchema
 import de.kiwi.api.util.lookupSupertypeArgument
+import de.kiwi.framework.support.introspectForCreation
+import de.kiwi.framework.support.introspectForDeserialization
+import org.springframework.beans.BeanUtils
 import org.springframework.core.annotation.AnnotationUtils
+import tools.jackson.databind.BeanDescription
+import tools.jackson.databind.JavaType
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.introspect.BeanPropertyDefinition
 
 /**
  * Data class representing generic command/query metadata of an entity.
@@ -56,7 +59,7 @@ data class GenericMetadata(
         val subtypeProperties: Map<String, SchemaDescriptor>,
     )
 
-    data class PropertyInfo(val valueClassName: String, val description: String)
+    data class PropertyInfo(val valueClassName: String, val description: String, val required: Boolean = false)
     data class RelationInfo(val entityName: String, val entityClassName: String)
     data class RelationPairInfo(val key: RelationInfo, val value: RelationInfo)
 }
@@ -71,7 +74,6 @@ class GenericMetadataProvider(
     private val genericHandlerProvider: GenericHandlerProvider,
 ) {
     private val typeFactory = objectMapper.typeFactory
-    private val deserialization = objectMapper.deserializationConfig
 
     fun genericMetadata(entityClass: Class<*>): GenericMetadata? {
         val entityType = entityTypeProvider.findEntityType(entityClass) ?: return null
@@ -87,7 +89,8 @@ class GenericMetadataProvider(
             create = createType?.let { type ->
                 GenericMetadata.CreateDescriptor(
                     commandClassName = type.name,
-                    properties = introspectProperties(type, deserialization::introspectForCreation) { it.isRequired }
+                    properties = genericBodyProperties(type, create = true)
+                        ?: introspectProperties(type, objectMapper::introspectForCreation) { it.isRequired },
                 )
             },
             update = updateType?.let { type ->
@@ -98,7 +101,8 @@ class GenericMetadataProvider(
                 GenericMetadata.UpdateDescriptor(
                     commandClassName = type.name,
                     idClassName = idClass.name,
-                    properties = introspectProperties(type, deserialization::introspect) { it.hasSetter() }
+                    properties = genericBodyProperties(type, create = false)
+                        ?: introspectProperties(type, objectMapper::introspectForDeserialization) { it.hasSetter() },
                 )
             },
             delete = deleteType?.let { type ->
@@ -112,7 +116,7 @@ class GenericMetadataProvider(
                 )
             },
             query = queryType?.let { createQueryDescriptor(it, entityClass) },
-            schema = schema?.let { createSchemaDescriptor(it) }
+            schema = schema?.let { createSchemaDescriptor(it) },
         )
     }
 
@@ -121,20 +125,29 @@ class GenericMetadataProvider(
         introspect: (JavaType) -> BeanDescription,
         propertyFilter: (BeanPropertyDefinition) -> Boolean,
     ): Map<String, GenericMetadata.PropertyInfo> {
-        // Skip for generic create- and update-commands
-        if (GenericUpdate::class.java.isAssignableFrom(type)) {
-            return emptyMap()
-        }
-        if (GenericCreate::class.java.isAssignableFrom(type)) {
-            return emptyMap()
-        }
-
         // Get properties using Jackson introspection
         val typeDescriptor = typeInfo(type)
         val introspection = introspect(typeDescriptor)
         return introspection.findProperties()
             .filter(propertyFilter)
             .associate { it.name to propertyInfo(it.primaryType) }
+    }
+
+    /** Properties of generic create/update commands from their body fields, `null` for other commands. */
+    private fun genericBodyProperties(type: Class<*>, create: Boolean): Map<String, GenericMetadata.PropertyInfo>? {
+        if (!GenericBodyCommand::class.java.isAssignableFrom(type)) return null
+        val command = BeanUtils.instantiateClass(type) as GenericBodyCommand<*>
+        return command.bodyFields.associate { field ->
+            val javaType = typeFactory.constructType(field.valueType)
+            val subtypes = (field.source as? GenericBodyFieldSource.Subtype)?.subtypes?.keys
+                ?.joinToString(prefix = " (", postfix = ")")
+            val nullable = if (field.nullable) "?" else ""
+            field.jsonKey to GenericMetadata.PropertyInfo(
+                valueClassName = javaType.toCanonical(),
+                description = "${javaType.typeName}$nullable${subtypes ?: ""}",
+                required = create && field.required,
+            )
+        }
     }
 
     private fun typeInfo(type: Class<*>) = typeFactory.constructType(type)
@@ -150,7 +163,7 @@ class GenericMetadataProvider(
         val filterType = querySchemaProvider.findFilterType(entityClass)
 
         val filterProperties = filterType?.let { type ->
-            introspectProperties(type, deserialization::introspect) { it.hasSetter() }
+            introspectProperties(type, objectMapper::introspectForDeserialization) { it.hasSetter() }
         }
 
         return GenericMetadata.QueryDescriptor(
@@ -189,7 +202,7 @@ class GenericMetadataProvider(
                 },
                 subtypeProperties = schema.subtypeReferences.associate {
                     it.fieldName to createSchemaDescriptor(it.subtypeSchema)
-                }
+                },
             )
         }
     }

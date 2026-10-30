@@ -6,8 +6,8 @@ import org.hamcrest.Matchers.*
 import org.junit.jupiter.api.Test
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
-import org.springframework.boot.autoconfigure.domain.EntityScan
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.springframework.boot.persistence.autoconfigure.EntityScan
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import java.time.LocalDate
 
 object MyEntityFieldsets : FieldsetsAvailable<MyEntity>(MyEntitySchema) {

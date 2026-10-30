@@ -1,6 +1,5 @@
 package de.kiwi.api.domain
 
-import de.kiwi.api.domain.Auditable.Severity.Disabled
 import java.io.Serializable
 import java.time.LocalDateTime
 
@@ -24,7 +23,10 @@ interface Auditable : Serializable {
 /**
  * Interface for objects that can provide [Auditable.details] for audit logging
  * based on a given input value.
+ *
+ * If no [UserDescriptor] is given, the global [de.kiwi.api.application.service.UserDescriptorProvider.Global] instance
+ * is used to look up the current user.
  */
 fun interface DetailsProvider<T : Any> {
-    fun toDetails(value: T): Any?
+    fun toDetails(value: T, user: UserDescriptor?): Any?
 }

@@ -1,11 +1,11 @@
 package de.kiwi.framework.web
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import de.kiwi.api.domain.*
-import de.kiwi.framework.application.generic.GenericMetadataProvider
-import de.kiwi.framework.infrastructure.bus.CommandQueryEventBusConfiguration
+import de.kiwi.api.generic.GenericCommandMisconfigured
+import de.kiwi.framework.KiwiFrameworkAutoConfiguration
+import de.kiwi.framework.infrastructure.bus.KiwiBusAutoConfiguration
 import de.kiwi.framework.infrastructure.generic.*
-import de.kiwi.framework.infrastructure.schema.FieldsetValidationConfiguration
 import de.kiwi.framework.infrastructure.security.SpringUserDescriptorProvider
 import de.kiwi.framework.infrastructure.security.UserDescriptorArgumentResolver
 import de.kiwi.framework.infrastructure.spring.SpringTransactionService
@@ -17,17 +17,16 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration
-import org.springframework.boot.autoconfigure.domain.EntityScan
-import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
-import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase
-import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureDataJpa
-import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEntityManager
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration
+import org.springframework.boot.persistence.autoconfigure.EntityScan
+import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration
+import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase
+import org.springframework.boot.data.jpa.test.autoconfigure.AutoConfigureDataJpa
+import org.springframework.boot.jpa.test.autoconfigure.AutoConfigureTestEntityManager
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
-import org.springframework.context.annotation.Import
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 import org.springframework.format.FormatterRegistry
 import org.springframework.http.MediaType
@@ -59,19 +58,12 @@ class GenericEntityControllerTest {
     @SpringBootConfiguration
     @EnableWebMvc
     @EnableJpaRepositories
-    @ComponentScan("de.kiwi.framework.infrastructure.generic")
+    @ComponentScan("de.kiwi.framework.infrastructure.generic", "de.kiwi.testing.misconfigured")
     @EntityScan("de.kiwi.api", "de.kiwi.framework.infrastructure.generic")
-    @EnableAutoConfiguration(exclude = [SecurityAutoConfiguration::class, SecurityFilterAutoConfiguration::class])
-    @Import(
-        KiwiWebConfiguration::class,
-        GenericHandlerConfiguration::class,
-        CommandQueryEventBusConfiguration::class,
-        FieldsetValidationConfiguration::class,
-        // Specific component classes
-        GenericEntityMethodHandler::class,
-        KiwiRouterFunctionConfig::class,
-        KiwiRouteHelper::class,
-        GenericMetadataProvider::class,
+    @ImportAutoConfiguration(
+        KiwiFrameworkAutoConfiguration::class,
+        KiwiBusAutoConfiguration::class,
+        KiwiWebAutoConfiguration::class,
     )
     class TestApplicationConfig : WebMvcConfigurer {
         @Bean
@@ -139,7 +131,7 @@ class GenericEntityControllerTest {
 
         // Assert created entity exists
         val contentJson = jsonMapper.readTree(result.response.contentAsByteArray)
-        val createdIdValue = contentJson["id"].asText()
+        val createdIdValue = contentJson["id"].asString()
         val createdEntity = findEntity<Publisher>(EntityId.fromString<PublisherId>(createdIdValue))
         assertNotNull(createdEntity)
         assertEquals("New Publisher", createdEntity?.name)
@@ -161,11 +153,13 @@ class GenericEntityControllerTest {
                 json(
                     compareMode = JsonCompareMode.LENIENT,
                     jsonContent = """{
-                      "message": "entity-field-invalid",
+                      "message": "entity-body-invalid",
                       "arguments": {
-                        "fieldName": "name",
-                        "reason": "not-blank",
-                        "entityType": "de.kiwi.framework.infrastructure.generic.Publisher"
+                        "entityType": "de.kiwi.framework.infrastructure.generic.Publisher",
+                        "errors": [{
+                          "code": "entity-field-invalid",
+                          "args": { "fieldName": "name", "reason": "not-blank" }
+                        }]
                       }
                     }""",
                 )
@@ -188,7 +182,7 @@ class GenericEntityControllerTest {
         entityManager.flush()
 
         // Submit update
-        val result = mvc.put("/publisher/$publisherId") {
+        val result = mvc.patch("/publisher/$publisherId") {
             //language=JSON
             content = """{ "contact": { "country": "Germany" } }"""
             contentType = MediaType.APPLICATION_JSON
@@ -214,8 +208,26 @@ class GenericEntityControllerTest {
 
         // Assert ID equality
         val contentJson = jsonMapper.readTree(result.response.contentAsByteArray)
-        val updatedIdValue = contentJson["id"].asText()
+        val updatedIdValue = contentJson["id"].asString()
         assertEquals(publisherId.toString(), updatedIdValue)
+    }
+
+    @Test
+    fun updateEntityPatchingReadOnlyColumnFails() {
+        val authorId = newId<AuthorId>()
+        entityManager.persist(Author(id = authorId, email = null, fullName = "Author", contact = Contact()))
+        entityManager.flush()
+
+        // A handler patching a read-only column is a server-side error, even if the key is absent
+        mvc.patch("/author/$authorId") {
+            //language=JSON
+            content = """{ "fullName": "Renamed" }"""
+            contentType = MediaType.APPLICATION_JSON
+        }.andDo { print() }.andExpect {
+            status { isInternalServerError() }
+            jsonPath("$.message") { value("unknown-exception") }
+            jsonPath("$.errorType") { value(GenericCommandMisconfigured::class.java.name) }
+        }
     }
 
     @Test
@@ -230,7 +242,7 @@ class GenericEntityControllerTest {
             )
         )
 
-        mvc.put("/publisher/$publisherId") {
+        mvc.patch("/publisher/$publisherId") {
             // Name must not be blank, so this should fail
             //language=JSON
             content = """{ "name": "" }"""
@@ -241,11 +253,13 @@ class GenericEntityControllerTest {
                 json(
                     compareMode = JsonCompareMode.LENIENT,
                     jsonContent = """{
-                          "message": "entity-field-invalid",
+                          "message": "entity-body-invalid",
                           "arguments": {
-                            "fieldName": "name",
-                            "reason": "not-blank",
-                            "entityType": "de.kiwi.framework.infrastructure.generic.Publisher"
+                            "entityType": "de.kiwi.framework.infrastructure.generic.Publisher",
+                            "errors": [{
+                              "code": "entity-field-invalid",
+                              "args": { "fieldName": "name", "reason": "not-blank" }
+                            }]
                           }
                         }"""
                 )
@@ -763,12 +777,18 @@ class GenericEntityControllerTest {
   "entityClassName": "de.kiwi.framework.infrastructure.generic.Publisher",
   "create": {
     "commandClassName": "de.kiwi.framework.infrastructure.generic.CreatePublisher",
-    "properties": {}
+    "properties": {
+      "name": { "valueClassName": "java.lang.String", "required": true },
+      "contact": { "valueClassName": "de.kiwi.framework.infrastructure.generic.Contact", "required": true }
+    }
   },
   "update": {
     "commandClassName": "de.kiwi.framework.infrastructure.generic.UpdatePublisher",
     "idClassName": "de.kiwi.framework.infrastructure.generic.PublisherId",
-    "properties": {}
+    "properties": {
+      "name": { "valueClassName": "java.lang.String", "required": false },
+      "contact": { "valueClassName": "de.kiwi.framework.infrastructure.generic.Contact", "required": false }
+    }
   },
   "delete": {
     "commandClassName": "de.kiwi.framework.infrastructure.generic.DeletePublisher",

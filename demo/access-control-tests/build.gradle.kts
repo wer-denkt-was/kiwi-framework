@@ -1,5 +1,5 @@
 plugins {
-    id("kiwi-common-convention")
+    id("de.kiwi.common-conventions")
 }
 
 group = "de.kiwi.demo"
@@ -11,18 +11,18 @@ dependencies {
     implementation(project(":audit-log"))
 
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("tools.jackson.module:jackson-module-kotlin")
     implementation("com.samskivert:jmustache")
 
     kapt("org.springframework.boot:spring-boot-configuration-processor")
-    kapt("org.hibernate.orm:hibernate-jpamodelgen")
+    kapt("org.hibernate.orm:hibernate-processor")
 
     runtimeOnly("com.mysql:mysql-connector-j")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
-    testImplementation("org.testcontainers:junit-jupiter")
-    testImplementation("org.testcontainers:mysql")
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-mysql")
 }

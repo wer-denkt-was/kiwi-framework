@@ -1,5 +1,6 @@
 package de.kiwi.api.schema
 
+import de.kiwi.api.util.getIncludingSubtypes
 import de.kiwi.api.util.reusableJoin
 import de.kiwi.api.util.slf4j
 import jakarta.persistence.Embedded
@@ -187,12 +188,12 @@ sealed interface AttributePath<E, T> {
 
         override fun selectChain(base: Path<in E>): Path<out T> {
             // "Chain" select is guaranteed to never use joins, only chaining Path.get(...)
-            val value = base.get<X>(attribute.name)
+            val value = base.getIncludingSubtypes<X>(attribute.name)
             return next.selectChain(value)
         }
 
         private fun selectAttribute(base: Path<in E>, forceLeftJoin: Boolean): Pair<Path<X>, JoinType> {
-            val path = base.get<X>(attribute.name)
+            val path = base.getIncludingSubtypes<X>(attribute.name)
             val pathAttribute = path.model as? SingularAttribute<*, *>
 
             return when {
@@ -251,7 +252,7 @@ sealed interface AttributePath<E, T> {
         override fun selectFrom(base: Path<in E>, propagateLeftJoin: Boolean): Path<out T> {
             // Assumption: Tail attributes are always embeddable/basic,
             // so no relation join handling is necessary here
-            return base.get(attribute.name)
+            return base.getIncludingSubtypes(attribute.name)
         }
 
         override fun selectChain(base: Path<in E>): Path<out T> = selectFrom(base)
@@ -300,10 +301,10 @@ sealed interface NullEmbeddableHandler<out X> {
     }
 
     class EmplaceEmbeddable<X>(
-        embeddableTypeClass: Class<X>,
+        embeddableTypeClass: Class<X & Any>,
         private val nullableProperty: Boolean,
     ) : NullEmbeddableHandler<X> {
-        private val constructor = ClassUtils.getConstructorIfAvailable<X>(embeddableTypeClass)
+        private val constructor = ClassUtils.getConstructorIfAvailable(embeddableTypeClass)
         override fun invoke(forWrite: Boolean): X? = constructor?.let {
             if (!forWrite && nullableProperty) null // don't emplace when reading a nullable property
             else BeanUtils.instantiateClass(it)
@@ -320,7 +321,7 @@ private fun <X> KProperty1<*, X>?.nullEmbeddableHandler(): NullEmbeddableHandler
     if (hasJavaAnnotation<EmbeddedId>()) return NullEmbeddableHandler.PassNull
     if (hasJavaAnnotation<Id>()) return NullEmbeddableHandler.PassNull
 
-    @Suppress("UNCHECKED_CAST") val attributeValueClass = returnType.jvmErasure.java as Class<X>
+    @Suppress("UNCHECKED_CAST") val attributeValueClass = returnType.jvmErasure.java as Class<X & Any>
     return NullEmbeddableHandler.EmplaceEmbeddable(attributeValueClass, nullableProperty = returnType.isMarkedNullable)
 }
 

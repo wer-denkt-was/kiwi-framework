@@ -9,11 +9,17 @@ import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.core.userdetails.UserDetails
 
+/**
+ * [UserDescriptorProvider] of the current Spring Security [Authentication], converted using the given
+ * [AuthenticationUserDescriptorConverter]s, or by default from [UserDetails] principals (see [SpringUserDescriptor]).
+ * @param rolePrefix Prefix removed from the granted authorities of [UserDetails] principals
+ */
 class SpringUserDescriptorProvider(
     authenticationConverters: List<AuthenticationUserDescriptorConverter>,
+    rolePrefix: String = SpringUserDescriptor.DEFAULT_ROLE_PREFIX,
 ) : UserDescriptorProvider {
     private val allAuthenticationConverters: List<AuthenticationUserDescriptorConverter> = run {
-        val defaultConverters = listOf(UserDetailsUserDescriptorConverter)
+        val defaultConverters = listOf(UserDetailsUserDescriptorConverter(rolePrefix))
         (authenticationConverters + defaultConverters).sortedBy { it.order }
     }
 
@@ -31,15 +37,15 @@ class SpringUserDescriptorProvider(
     }
 }
 
-interface AuthenticationUserDescriptorConverter : Converter<Authentication, UserDescriptor>, Ordered {
+interface AuthenticationUserDescriptorConverter : Converter<Authentication, UserDescriptor?>, Ordered {
     override fun getOrder() = 0
 }
 
-private object UserDetailsUserDescriptorConverter : AuthenticationUserDescriptorConverter {
+private class UserDetailsUserDescriptorConverter(private val rolePrefix: String) : AuthenticationUserDescriptorConverter {
     override fun getOrder() = Ordered.LOWEST_PRECEDENCE // Use default as last
 
     override fun convert(source: Authentication): UserDescriptor? {
         val details = source.principal as? UserDetails ?: return null
-        return SpringUserDescriptor(details)
+        return SpringUserDescriptor(details, rolePrefix)
     }
 }
