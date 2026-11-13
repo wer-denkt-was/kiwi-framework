@@ -21,6 +21,7 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/api" />
             <option value="$PROJECT_DIR$/audit-log" />
+            <option value="$PROJECT_DIR$/background-tasks" />
             <option value="$PROJECT_DIR$/build-logic" />
             <option value="$PROJECT_DIR$/bundle" />
             <option value="$PROJECT_DIR$/demo" />

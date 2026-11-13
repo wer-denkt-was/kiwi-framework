@@ -6,9 +6,10 @@ are internal and track decisions and progress.
 
 ## Documents
 
-| Plan                                            | Target | State  |
-|-------------------------------------------------|--------|--------|
-| [1.5.0 Upgrade & Refactoring](1.5.0-upgrade.md) | 1.5.0  | Active |
+| Plan                                                | Target | State     |
+|-----------------------------------------------------|--------|-----------|
+| [1.5.0 Upgrade & Refactoring](1.5.0-upgrade.md)     | 1.5.0  | Completed |
+| [1.5.1 Background Tasks](1.5.1-background-tasks.md) | 1.5.1  | Completed |
 
 ## Conventions
 
@@ -16,25 +17,27 @@ are internal and track decisions and progress.
 - Every item has a stable ID, which is never reused or renumbered, so it can be referenced from commits and
   discussions (e.g. `Refs: 1.5.0/A-03`):
 
-  | Prefix | Kind                                                        |
-  |--------|-------------------------------------------------------------|
-  | `U-`   | Upgrade work (version bumps, migrations)                    |
-  | `Q-`   | Open question, needs a decision before or during the work   |
-  | `A-`   | Architecture / code finding                                 |
-  | `B-`   | Build / publishing finding                                  |
-  | `I-`   | Further change idea, added as it comes up                   |
+| Prefix | Kind                                                      |
+|--------|-----------------------------------------------------------|
+| `U-`   | Upgrade work (version bumps, migrations)                  |
+| `Q-`   | Open question, needs a decision before or during the work |
+| `A-`   | Architecture / code finding                               |
+| `B-`   | Build / publishing finding                                |
+| `I-`   | Further change idea, added as it comes up                 |
+| `R-`   | Refactoring / redesign of existing code                   |
+| `F-`   | Feature, requested as part of the plan                    |
 
 - Item status:
 
-  | Status        | Meaning                                                  |
-  |---------------|----------------------------------------------------------|
-  | `proposed`    | Recorded, awaiting adjudication                          |
-  | `accepted`    | Decided to do, not started                               |
-  | `rejected`    | Decided not to do (keep the item, note the reason)       |
-  | `deferred`    | Not for this target, revisit later                       |
-  | `in-progress` | Being worked on                                          |
-  | `implemented` | Done on the branch, awaiting review/merge                |
-  | `done`        | Reviewed and merged                                      |
+| Status        | Meaning                                            |
+|---------------|----------------------------------------------------|
+| `proposed`    | Recorded, awaiting adjudication                    |
+| `accepted`    | Decided to do, not started                         |
+| `rejected`    | Decided not to do (keep the item, note the reason) |
+| `deferred`    | Not for this target, revisit later                 |
+| `in-progress` | Being worked on                                    |
+| `implemented` | Done on the branch, awaiting review/merge          |
+| `done`        | Reviewed and merged                                |
 
 - Adjudicate an item by setting its status in the plan's overview table and filling in its **Decision** line.
 - Each item records priority (`high`/`medium`/`low`) and whether it is **breaking** for framework consumers.

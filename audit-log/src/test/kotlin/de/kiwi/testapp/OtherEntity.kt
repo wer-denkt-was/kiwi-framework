@@ -5,7 +5,7 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.Id
 import org.springframework.data.jpa.repository.JpaRepository
 
-/** Entity of an application using the Kiwi audit-log module, used for testing the audit-log auto-configuration */
+/** Entity of an application using the Kiwi audit-log module, used for testing the audit-log autoconfiguration */
 @Entity
 class OtherEntity(
     @Id

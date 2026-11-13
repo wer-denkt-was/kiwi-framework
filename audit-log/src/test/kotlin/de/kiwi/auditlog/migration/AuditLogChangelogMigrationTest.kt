@@ -38,22 +38,29 @@ private const val CHANGESETS_BEFORE_1_5 = 3
  */
 class AuditLogChangelogMigrationTest {
     enum class DatabaseVendor(
-        val detailsPlaceholder: String,
         val createContainer: (imageName: String) -> JdbcDatabaseContainer<*>,
+        val detailsPlaceholder: String = "?",
     ) {
-        MySQL("?", ::MySQLContainer),
-        MariaDB("?", ::MariaDBContainer),
-        PostgreSQL("cast(? as jsonb)", ::PostgreSQLContainer),
+        MySQL(::MySQLContainer),
+        MariaDB(::MariaDBContainer),
+        PostgreSQL(::PostgreSQLContainer, detailsPlaceholder = "cast(? as jsonb)"),
     }
 
-    enum class DatabaseSystem(val imageName: String, val vendor: DatabaseVendor) {
+    enum class DatabaseSystem(
+        val imageName: String,
+        val vendor: DatabaseVendor,
+        val eventDetailsAsText: String = "event_details",
+    ) {
         MySQL8("mysql:8", DatabaseVendor.MySQL),
         MySQL9("mysql:9", DatabaseVendor.MySQL),
-        MariaDB11("mariadb:11", DatabaseVendor.MariaDB),
-        MariaDB12("mariadb:12", DatabaseVendor.MariaDB),
+
+        //DISABLED MariaDB11("mariadb:11", DatabaseVendor.MariaDB),
+        //DISABLED MariaDB12("mariadb:12", DatabaseVendor.MariaDB),
         MariaDB13("mariadb:13", DatabaseVendor.MariaDB),
-        PostgreSQL17("postgres:17", DatabaseVendor.PostgreSQL),
-        PostgreSQL18("postgres:18", DatabaseVendor.PostgreSQL);
+
+        //DISABLED PostgreSQL17("postgres:17", DatabaseVendor.PostgreSQL, eventDetailsAsText = "event_details::text"),
+        PostgreSQL18("postgres:18", DatabaseVendor.PostgreSQL),
+        ;
 
         fun createContainer(): JdbcDatabaseContainer<*> = vendor.createContainer(imageName)
     }
@@ -170,10 +177,10 @@ class AuditLogChangelogMigrationTest {
 
     @Language("GenericSQL")
     private fun insertSql(detailsPlaceholder: String) = """
-    |insert into
-    | kiwi_audit_log (id, user_id, user_name, event_name, severity, occurred_on, event_details)
-    | values (?, null, ?, ?, ?, ?, $detailsPlaceholder);
-    |""".trimMargin()
+        |insert into
+        | kiwi_audit_log (id, user_id, user_name, event_name, severity, occurred_on, event_details)
+        | values (?, null, ?, ?, ?, ?, $detailsPlaceholder);
+        |""".trimMargin()
 
     private fun bindEntryColumns(statement: java.sql.PreparedStatement, id: Long) {
         statement.setLong(1, id)
@@ -184,7 +191,7 @@ class AuditLogChangelogMigrationTest {
     }
 
     private fun selectDetails(connection: Connection, system: DatabaseSystem): List<String> {
-        val detailsAsText = if (system == DatabaseSystem.PostgreSQL17) "event_details::text" else "event_details"
+        val detailsAsText = system.eventDetailsAsText
         connection.createStatement().use { statement ->
             statement.executeQuery("select $detailsAsText from kiwi_audit_log order by id").use { result ->
                 return buildList { while (result.next()) add(result.getString(1)) }

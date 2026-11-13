@@ -1,0 +1,149 @@
+databaseChangeLog:
+  # JSON column type: PostgreSQL uses jsonb (as mapped by Hibernate), MySQL/MariaDB/H2 use json
+  - property:
+      name: kiwi.background-task.json-type
+      value: jsonb
+      dbms: postgresql
+  - property:
+      name: kiwi.background-task.json-type
+      value: json
+  # Scratchpad key column type: Keys are case-sensitive, MySQL/MariaDB collations are case-insensitive by default
+  - property:
+      name: kiwi.background-task.data-key-type
+      value: varchar(255) COLLATE utf8mb4_bin
+      dbms: mysql,mariadb
+  - property:
+      name: kiwi.background-task.data-key-type
+      value: varchar(255)
+  - changeSet:
+      id: init-background-tasks
+      author: dahmen
+      changes:
+        - createTable:
+            tableName: kiwi_background_task
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  constraints: { primaryKey: true, nullable: false }
+              - column:
+                  # Stored as string (mapped as VARCHAR), as native UUID types differ between database systems
+                  name: handle
+                  type: varchar(36)
+                  constraints: { unique: true, nullable: false }
+              - column:
+                  name: request_class
+                  type: varchar(1024)
+                  constraints: { nullable: false }
+              - column:
+                  name: request_data
+                  type: ${kiwi.background-task.json-type}
+                  constraints: { nullable: false }
+              - column:
+                  name: created_on
+                  type: datetime
+                  constraints: { nullable: false }
+              - column:
+                  name: created_by_user_id
+                  type: bigint
+              - column:
+                  name: created_by_username
+                  type: varchar(1024)
+              - column:
+                  name: user_data
+                  type: ${kiwi.background-task.json-type}
+                  constraints: { nullable: false }
+              - column:
+                  name: status
+                  type: varchar(255)
+                  constraints: { nullable: false }
+              - column:
+                  name: progress_percent
+                  type: int
+                  defaultValueNumeric: "0"
+                  constraints: { nullable: false }
+              - column:
+                  name: progress_data
+                  type: ${kiwi.background-task.json-type}
+              - column:
+                  name: attempt
+                  type: int
+                  defaultValueNumeric: "0"
+                  constraints: { nullable: false }
+              - column:
+                  name: worker_name
+                  type: varchar(1024)
+              - column:
+                  name: lease_expires_on
+                  type: datetime
+              - column:
+                  name: started_on
+                  type: datetime
+              - column:
+                  name: completed_on
+                  type: datetime
+              - column:
+                  name: pending_since
+                  type: datetime
+              - column:
+                  name: retry_on
+                  type: datetime
+              - column:
+                  name: result_data
+                  type: ${kiwi.background-task.json-type}
+              - column:
+                  name: error_data
+                  type: ${kiwi.background-task.json-type}
+        - createIndex:
+            tableName: kiwi_background_task
+            indexName: idx_kiwi_background_task_status
+            columns:
+              - column:
+                  name: status
+        - createTable:
+            tableName: kiwi_background_task_data
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  constraints: { primaryKey: true, nullable: false }
+              - column:
+                  name: task_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_background_task_data_task
+                    references: kiwi_background_task(id)
+                    deleteCascade: true
+              - column:
+                  name: data_key
+                  type: ${kiwi.background-task.data-key-type}
+                  constraints: { nullable: false }
+              - column:
+                  name: data_value
+                  type: ${kiwi.background-task.json-type}
+              - column:
+                  name: updated_on
+                  type: datetime
+                  constraints: { nullable: false }
+        - addUniqueConstraint:
+            constraintName: unique_background_task_data_key
+            tableName: kiwi_background_task_data
+            columnNames: task_id, data_key
+  # Indexes for the statistics of the backgroundTaskStats management endpoint (tasks created/closed in a period)
+  - changeSet:
+      id: background-task-stats-indexes
+      author: dahmen
+      changes:
+        - createIndex:
+            tableName: kiwi_background_task
+            indexName: idx_kiwi_background_task_created_on
+            columns:
+              - column:
+                  name: created_on
+        - createIndex:
+            tableName: kiwi_background_task
+            indexName: idx_kiwi_background_task_completed_on
+            columns:
+              - column:
+                  name: completed_on

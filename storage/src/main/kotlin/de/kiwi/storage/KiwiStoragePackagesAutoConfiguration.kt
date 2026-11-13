@@ -4,6 +4,7 @@ import de.kiwi.storage.domain.FileEntity
 import org.springframework.beans.factory.support.BeanDefinitionRegistry
 import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.autoconfigure.AutoConfigurationPackages
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty
 import org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration
 import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
 import org.springframework.boot.persistence.autoconfigure.EntityScanPackages
@@ -21,12 +22,8 @@ import org.springframework.core.type.AnnotationMetadata
  * The repository package is not registered, as Spring Data registers repositories of overlapping packages twice:
  * The repository is registered by [KiwiStorageAutoConfiguration] instead.
  */
-@AutoConfiguration(
-    before = [
-        HibernateJpaAutoConfiguration::class,
-        DataJpaRepositoriesAutoConfiguration::class,
-    ],
-)
+@AutoConfiguration(before = [HibernateJpaAutoConfiguration::class, DataJpaRepositoriesAutoConfiguration::class])
+@ConditionalOnBooleanProperty("kiwi.storage.enabled", matchIfMissing = true)
 @Import(KiwiStoragePackagesAutoConfiguration.Registrar::class)
 class KiwiStoragePackagesAutoConfiguration {
 
@@ -34,6 +31,7 @@ class KiwiStoragePackagesAutoConfiguration {
         override fun registerBeanDefinitions(metadata: AnnotationMetadata, registry: BeanDefinitionRegistry) {
             val entityPackage = FileEntity::class.java.packageName
             AutoConfigurationPackages.register(registry, entityPackage)
+
             if (registry.containsBeanDefinition(EntityScanPackages::class.java.name)) {
                 EntityScanPackages.register(registry, entityPackage)
             }

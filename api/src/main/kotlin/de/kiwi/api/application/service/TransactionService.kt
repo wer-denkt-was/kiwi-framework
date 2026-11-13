@@ -21,6 +21,16 @@ interface TransactionService {
      */
     fun <T> writeNew(action: (TxContext) -> T): T = write(action)
 
+    /**
+     * Execute the given [action] either joining an existing or requiring a new, independent transaction,
+     * depending on [requireNew].
+     * @see write
+     * @see writeNew
+     */
+    fun <T> write(requireNew: Boolean, action: (TxContext) -> T): T {
+        return if (requireNew) writeNew(action) else write(action)
+    }
+
     interface TxContext {
         val isNew: Boolean
         val isDone: Boolean

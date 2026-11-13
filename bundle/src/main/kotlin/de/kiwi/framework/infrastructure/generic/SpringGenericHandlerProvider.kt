@@ -1,8 +1,5 @@
 package de.kiwi.framework.infrastructure.generic
 
-import tools.jackson.databind.JsonNode
-import tools.jackson.databind.ObjectMapper
-import tools.jackson.databind.exc.MismatchedInputException
 import de.kiwi.api.domain.Command
 import de.kiwi.api.domain.EntityId
 import de.kiwi.api.domain.EntityMethodUnavailable
@@ -15,6 +12,9 @@ import de.kiwi.framework.infrastructure.util.ClassPathScannerUtil
 import org.springframework.beans.BeanUtils
 import org.springframework.beans.factory.InitializingBean
 import org.springframework.core.annotation.AnnotationUtils
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.exc.MismatchedInputException
 import java.lang.reflect.Constructor
 import kotlin.reflect.KClass
 
@@ -53,9 +53,12 @@ class SpringGenericHandlerProvider(
         val customCreateClasses = classPathScanner.findAnnotatedClassesInPackages<CreateCommand>(basePackages)
         val customUpdateClasses = classPathScanner.findAnnotatedClassesInPackages<UpdateCommand>(basePackages)
         val customDeleteClasses = classPathScanner.findAnnotatedClassesInPackages<DeleteCommand>(basePackages)
-        val customCreates = customCreateClasses.map { it.commandAnnotation<CreateCommand> { c -> c.value } to it.asCommand() }
-        val customUpdates = customUpdateClasses.map { it.commandAnnotation<UpdateCommand> { c -> c.value } to it.asCommand() }
-        val customDeletes = customDeleteClasses.map { it.commandAnnotation<DeleteCommand> { c -> c.value } to it.asCommand() }
+        val customCreates =
+            customCreateClasses.map { it.commandAnnotation<CreateCommand> { c -> c.value } to it.asCommand() }
+        val customUpdates =
+            customUpdateClasses.map { it.commandAnnotation<UpdateCommand> { c -> c.value } to it.asCommand() }
+        val customDeletes =
+            customDeleteClasses.map { it.commandAnnotation<DeleteCommand> { c -> c.value } to it.asCommand() }
 
         // Each entity type may only have a single command/query class per method
         createTypes = (genericCreates + customCreates).toUniqueMap(method = "create command")
@@ -158,7 +161,7 @@ class SpringGenericHandlerProvider(
             .forEach { field ->
                 log.warn(
                     "Generic command [${commandType.name}]: Property [${field.propertyName}] is bound to " +
-                        "JSON key [${field.jsonKey}] of schema field ${field.source.schemaField}"
+                            "JSON key [${field.jsonKey}] of schema field ${field.source.schemaField}",
                 )
             }
     }

@@ -36,7 +36,7 @@ class KiwiStorageAutoConfigurationTest {
     @TempDir
     lateinit var storageDirectory: Path
 
-    /** Application relying on the auto-configuration packages for entity and repository scanning */
+    /** Application relying on the autoconfiguration packages for entity and repository scanning */
     @Configuration(proxyBeanMethods = false)
     @AutoConfigurationPackage(basePackageClasses = [OtherEntity::class])
     class DefaultPackagesApplication

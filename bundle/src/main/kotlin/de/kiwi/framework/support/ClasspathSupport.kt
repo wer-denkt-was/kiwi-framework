@@ -110,7 +110,7 @@ internal class ClasspathSupport(
     }
 
     /**
-     * Find entity-scan packages, as declared by `@EntityScan`, and the auto-configuration packages.
+     * Find entity-scan packages, as declared by `@EntityScan`, and the autoconfiguration packages.
      * Both may include packages registered by Kiwi auto-configurations.
      */
     fun findEntityScanPackages(context: ApplicationContext): List<String> {

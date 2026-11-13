@@ -11,6 +11,7 @@ import java.nio.file.Paths
  */
 @ConfigurationProperties("kiwi.storage")
 data class KiwiStorageProperties(
+    var enabled: Boolean = true,
     /** Storage provider, required unless the application declares its own `FileStorageService` bean */
     var provider: StorageProvider? = null,
     val s3: S3Properties = S3Properties(),

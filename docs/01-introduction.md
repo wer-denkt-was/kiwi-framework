@@ -110,6 +110,11 @@ for details.
   audit-log-entry entity, a database schema, and an implementation of the API module `AuditLoggerService` interface,
   which stores domain events and domain exceptions in the database. It is enabled by default and can be disabled with
   `kiwi.audit-log.enabled=false` (see [Chapter 5: "Audit Log"](./05-infrastructure-integration.md#audit-log)).
+- `de.kiwi-framework:kiwi-background-tasks` The Kiwi Background-Tasks module (package `de.kiwi.backgroundTask`)
+  runs long-running work as background tasks on workers, possibly on other application instances: It provides the
+  API module `BackgroundTaskService`, a task entity and database schema, a local and a RabbitMQ task queue, task
+  workers, and a management endpoint for monitoring and resuming tasks
+  (see [Chapter 10: "Background Tasks"](./10-background-tasks.md)).
 - `de.kiwi-framework:kiwi-mjml` The Kiwi MJML module (package `de.kiwi.mjml`) is a plug-in that extends the e-mail
   template rendering of Kiwi, allowing it to render [MJML Templates](https://mjml.io/) into HTML e-mail content.
   It adds its renderer to the e-mail template rendering pipeline, and can be disabled with
@@ -264,6 +269,8 @@ dependencies {
     implementation("de.kiwi-framework:kiwi-audit-log:$kiwiVersion")
     // [Optional] MJML Module: Provides an MJML e-mail template renderer
     implementation("de.kiwi-framework:kiwi-mjml:$kiwiVersion")
+    // [Optional] Background-Tasks Module: Runs long-running tasks on workers
+    implementation("de.kiwi-framework:kiwi-background-tasks:$kiwiVersion")
 
     // (5) Spring Boot starters
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
@@ -316,7 +323,8 @@ tasks.withType<Test> {
 > To see which versions of Kiwi-Server are available, check the
 > `maven-metadata.xml` file of the `de.kiwi-framework` artifacts provided by the Maven Repository on Maven Central.
 
-The Kiwi modules depend on each other transitively: `kiwi-framework`, `kiwi-storage` and `kiwi-audit-log` include
+The Kiwi modules depend on each other transitively: `kiwi-framework`, `kiwi-storage`, `kiwi-audit-log` and
+`kiwi-background-tasks` include
 `kiwi-api`, and `kiwi-mjml` includes `kiwi-framework`. Declaring `kiwi-api` explicitly makes clear that your code uses
 its interfaces, which is especially useful in application modules that don't include the other modules.
 

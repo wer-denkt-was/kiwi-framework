@@ -50,7 +50,7 @@ class KiwiManagementSecurityAutoConfiguration(private val props: KiwiFrameworkPr
     }
 
     // No @ConditionalOnBean(HttpSecurity): The prototype bean is registered by @EnableWebSecurity of the Spring Boot
-    // security auto-configurations, which are processed after this auto-configuration
+    // security auto-configurations, which are processed after this autoconfiguration
     @Bean
     @Order(MANAGEMENT_SECURITY_FILTER_CHAIN_ORDER) // Before other SecurityFilterChain beans
     fun kiwiManagementFilterChain(http: HttpSecurity): SecurityFilterChain {

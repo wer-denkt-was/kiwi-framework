@@ -30,6 +30,7 @@ class KiwiAuditLogPackagesAutoConfiguration {
         override fun registerBeanDefinitions(metadata: AnnotationMetadata, registry: BeanDefinitionRegistry) {
             val entityPackage = AuditLogEntry::class.java.packageName
             AutoConfigurationPackages.register(registry, entityPackage)
+
             if (registry.containsBeanDefinition(EntityScanPackages::class.java.name)) {
                 EntityScanPackages.register(registry, entityPackage)
             }

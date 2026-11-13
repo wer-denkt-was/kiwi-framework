@@ -20,7 +20,7 @@ import org.springframework.test.context.ActiveProfiles
 annotation class StorageDataJpaTest
 
 /**
- * Test application relying on the Kiwi storage auto-configuration, without component scanning.
+ * Test application relying on the Kiwi storage autoconfiguration, without component scanning.
  */
 @SpringBootConfiguration
 @EnableAutoConfiguration

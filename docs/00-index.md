@@ -31,8 +31,10 @@ follow along.
    command- and query-verification, and generating fieldset sources for frontends
 8. [Advanced Features](./08-advanced.md): In-depth topics, elaborating on the internals and more advanced features
 9. [Troubleshooting](./09-troubleshooting.md): Resolving known issues in development and deployment
-10. [Migrating to Kiwi 1.5](./98-migration-1.5.md): Changes required when upgrading an application from Kiwi 1.4
-11. [Appendix](./99-appendix.md): Glossary, Snowflake IDs, diagrams, and the example application project
+10. [Background Tasks](./10-background-tasks.md): Running long tasks on workers with the background-tasks module,
+    task handlers, progress and messages, stages, cancellation, resuming, and the management endpoint
+11. [Migrating to Kiwi 1.5](./98-migration-1.5.md): Changes required when upgrading an application from Kiwi 1.4
+12. [Appendix](./99-appendix.md): Glossary, Snowflake IDs, diagrams, and the example application project
 
 ---
 

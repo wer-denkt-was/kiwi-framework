@@ -5,7 +5,7 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.Id
 import org.springframework.data.jpa.repository.JpaRepository
 
-/** Entity of an application using the Kiwi storage module, used for testing the storage auto-configuration */
+/** Entity of an application using the Kiwi storage module, used for testing the storage autoconfiguration */
 @Entity
 class OtherEntity(
     @Id

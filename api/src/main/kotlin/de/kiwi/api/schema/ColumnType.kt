@@ -6,6 +6,9 @@ import de.kiwi.api.util.lookupSupertypeArgument
 import jakarta.persistence.DiscriminatorValue
 import jakarta.persistence.Entity
 import org.springframework.util.unit.DataSize
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.POJONode
+import tools.jackson.databind.util.RawValue
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.net.URI
@@ -258,4 +261,11 @@ class EnumColumnType<E : Enum<E>>(val enumType: Class<E>) : BasicColumnType<E, S
 /** [IdentityColumnType] for Strings that uses [StandardColumnFilters.patternMatching] as an extended [ColumnFilterSet] */
 object LikeStringColumnType : IdentityColumnType<String>(String::class.java) {
     override val filterSet = StandardColumnFilters.patternMatching // Supports extended pattern matching operators
+}
+
+/** [BasicColumnType] for Strings that contain raw JSON data, formatted as a [RawValue] wrapped in a [POJONode] */
+object RawJsonStringType : BasicColumnType<String, JsonNode>(JsonNode::class.java) {
+    override val filterSet = StandardColumnFilters.empty
+    override fun format(value: String): JsonNode = POJONode(RawValue(value))
+    override fun parse(value: JsonNode): String = value.toString()
 }

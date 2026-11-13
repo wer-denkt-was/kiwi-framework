@@ -15,6 +15,7 @@ include(":bundle")
 include(":mjml")
 include(":storage")
 include(":audit-log")
+include(":background-tasks")
 
 include(":demo:todo-app")
 include(":demo:access-control-tests")

@@ -7,6 +7,7 @@ dependencies {
     // Types of these libraries appear in the public API
     api("org.springframework.security:spring-security-core")
     api("org.springframework.data:spring-data-jpa")
+    api("org.springframework.boot:spring-boot-autoconfigure")
     api("jakarta.persistence:jakarta.persistence-api")
     api("com.fasterxml.jackson.core:jackson-annotations")
     api("tools.jackson.core:jackson-databind")
@@ -20,6 +21,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
     testImplementation(libs.mockito.kotlin)
+    testImplementation("tools.jackson.module:jackson-module-kotlin")
     testImplementation("org.hibernate.orm:hibernate-core")
     testRuntimeOnly("com.h2database:h2")
 

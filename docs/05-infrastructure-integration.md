@@ -16,19 +16,22 @@ entities.
 
 The following auto-configurations are provided by the Kiwi modules:
 
-| Module           | Auto-configuration                        | Provides                                                  |
-|------------------|-------------------------------------------|-----------------------------------------------------------|
-| `kiwi-framework` | `KiwiFrameworkAutoConfiguration`          | Query schemata, generic handlers, reports, user, clock    |
-| `kiwi-framework` | `KiwiBusAutoConfiguration`                | `EventBus`, `CommandBus`, `QueryBus`, `CommandQueryBus`   |
-| `kiwi-framework` | `KiwiMailAutoConfiguration`               | `MailSenderService`, Mustache template renderer           |
-| `kiwi-framework` | `KiwiWebAutoConfiguration`                | Generic and report endpoints, exception handling, CORS    |
-| `kiwi-framework` | `KiwiOpenApiAutoConfiguration`            | OpenAPI documentation of the Kiwi endpoints (SpringDoc)   |
-| `kiwi-framework` | `KiwiManagementSecurityAutoConfiguration` | HTTP Basic security for the actuator endpoints (opt-in)   |
-| `kiwi-mjml`      | `KiwiMjmlAutoConfiguration`               | MJML e-mail template renderer                             |
-| `kiwi-storage`   | `KiwiStoragePackagesAutoConfiguration`    | Registers the `FileEntity` package for entity scanning    |
-| `kiwi-storage`   | `KiwiStorageAutoConfiguration`            | `FileStorageService`, `FileEntityService`, file endpoint  |
-| `kiwi-audit-log` | `KiwiAuditLogPackagesAutoConfiguration`   | Registers the `AuditLogEntry` package for entity scanning |
-| `kiwi-audit-log` | `KiwiAuditLogAutoConfiguration`           | Persistent `AuditLoggerService`                           |
+| Module                  | Auto-configuration                              | Provides                                                   |
+|-------------------------|-------------------------------------------------|------------------------------------------------------------|
+| `kiwi-framework`        | `KiwiFrameworkAutoConfiguration`                | Query schemata, generic handlers, reports, user, clock     |
+| `kiwi-framework`        | `KiwiBusAutoConfiguration`                      | `EventBus`, `CommandBus`, `QueryBus`, `CommandQueryBus`    |
+| `kiwi-framework`        | `KiwiMailAutoConfiguration`                     | `MailSenderService`, Mustache template renderer            |
+| `kiwi-framework`        | `KiwiWebAutoConfiguration`                      | Generic and report endpoints, exception handling, CORS     |
+| `kiwi-framework`        | `KiwiOpenApiAutoConfiguration`                  | OpenAPI documentation of the Kiwi endpoints (SpringDoc)    |
+| `kiwi-framework`        | `KiwiManagementSecurityAutoConfiguration`       | HTTP Basic security for the actuator endpoints (opt-in)    |
+| `kiwi-mjml`             | `KiwiMjmlAutoConfiguration`                     | MJML e-mail template renderer                              |
+| `kiwi-storage`          | `KiwiStoragePackagesAutoConfiguration`          | Registers the `FileEntity` package for entity scanning     |
+| `kiwi-storage`          | `KiwiStorageAutoConfiguration`                  | `FileStorageService`, `FileEntityService`, file endpoint   |
+| `kiwi-audit-log`        | `KiwiAuditLogPackagesAutoConfiguration`         | Registers the `AuditLogEntry` package for entity scanning  |
+| `kiwi-audit-log`        | `KiwiAuditLogAutoConfiguration`                 | Persistent `AuditLoggerService`                            |
+| `kiwi-background-tasks` | `KiwiBackgroundTaskPackagesAutoConfiguration`   | Registers the `BackgroundTask` package for entity scanning |
+| `kiwi-background-tasks` | `KiwiBackgroundTaskAutoConfiguration`           | `BackgroundTaskService`, task queue, workers, messaging    |
+| `kiwi-background-tasks` | `KiwiBackgroundTaskManagementAutoConfiguration` | `backgroundTasks`, `backgroundTaskStats` endpoints         |
 
 The entities and repositories of the Kiwi modules register themselves, independent of how the application configures
 its own entity scanning: Spring Boot scans the package of the `@SpringBootApplication` class by default, and if the
@@ -85,6 +88,8 @@ Whole features can be switched off using configuration properties:
 | `kiwi.mail.enabled`                    | `true`  | `false` replaces e-mail delivery with a warning in the log     |
 | `kiwi.mail.mjml.enabled`               | `true`  | `false` removes the MJML renderer from the e-mail pipeline     |
 | `kiwi.audit-log.enabled`               | `true`  | `false` disables audit logging, including the audit-log module |
+| `kiwi.storage.enabled`                 | `true`  | `false` disables the storage module                            |
+| `kiwi.background-task.enabled`         | `true`  | `false` disables the background-tasks module                   |
 
 To exclude an autoconfiguration entirely, use Spring Boot's standard mechanism:
 
@@ -99,7 +104,8 @@ spring:
 
 All Kiwi configuration properties use the `kiwi` prefix. They are bound by the property classes
 `KiwiFrameworkProperties` (`kiwi-framework` module), `MjmlMailProperties` (`kiwi-mjml`), `KiwiStorageProperties`
-(`kiwi-storage`) and `KiwiAuditLogProperties` (`kiwi-audit-log`). The modules ship Spring Boot configuration metadata,
+(`kiwi-storage`), `KiwiAuditLogProperties` (`kiwi-audit-log`) and `KiwiBackgroundTaskProperties`
+(`kiwi-background-tasks`). The modules ship Spring Boot configuration metadata,
 so your IDE can auto-complete and document the properties in `application.yml`.
 
 Property names follow Spring Boot's relaxed binding, and so do enum values: `data-uri`, `DataUri` and `DATA_URI`
@@ -288,6 +294,7 @@ Prefix `kiwi.storage` (`kiwi-storage` module, see ["File Storage"](#file-storage
 
 | Property                               | Type    | Default | Description                                          |
 |----------------------------------------|---------|---------|------------------------------------------------------|
+| `enabled`                              | Boolean | `true`  | Enable the storage module                            |
 | `provider`                             | Enum    | -       | `None`, `DataUri`, `S3` or `Local`, see below        |
 | `entity.on-delete-remove-from-storage` | Boolean | `true`  | Delete the stored data when a file entity is deleted |
 
@@ -316,6 +323,11 @@ Prefix `kiwi.storage.s3`:
 | `public-access-hostname`      | String | -               | Hostname replacing the S3 hostname in signed URIs         |
 | `public-object-mode`          | Enum   | `Acl`           | Public files by object ACL or separate `Bucket`           |
 | `public-object-bucket-suffix` | String | `-public`       | Suffix of the public bucket in `Bucket` mode              |
+
+#### Background tasks
+
+Prefix `kiwi.background-task` (`kiwi-background-tasks` module): The queue, worker and messaging properties are listed
+in [Chapter 10: "Configuration Properties"](./10-background-tasks.md#configuration-properties).
 
 ## Transactions and Clock
 

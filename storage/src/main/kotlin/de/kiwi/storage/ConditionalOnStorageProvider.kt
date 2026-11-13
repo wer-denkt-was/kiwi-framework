@@ -1,18 +1,10 @@
 package de.kiwi.storage
 
 import de.kiwi.api.application.service.FileStorageService
+import de.kiwi.api.util.AbstractProviderCondition
 import de.kiwi.storage.KiwiStorageProperties.StorageProvider
-import org.springframework.beans.factory.getBeanNamesForType
-import org.springframework.boot.autoconfigure.condition.ConditionMessage
-import org.springframework.boot.autoconfigure.condition.ConditionOutcome
-import org.springframework.boot.autoconfigure.condition.SpringBootCondition
-import org.springframework.boot.context.properties.bind.Binder
 import org.springframework.boot.context.properties.source.InvalidConfigurationPropertyValueException
-import org.springframework.context.annotation.ConditionContext
 import org.springframework.context.annotation.Conditional
-import org.springframework.context.annotation.ConfigurationCondition
-import org.springframework.context.annotation.ConfigurationCondition.ConfigurationPhase
-import org.springframework.core.type.AnnotatedTypeMetadata
 
 /**
  * Condition matching if the configured `kiwi.storage.provider` is the given [StorageProvider].
@@ -29,44 +21,12 @@ import org.springframework.core.type.AnnotatedTypeMetadata
 @Conditional(OnStorageProviderCondition::class)
 annotation class ConditionalOnStorageProvider(val value: StorageProvider)
 
-private const val STORAGE_PROVIDER_PROPERTY = "kiwi.storage.provider"
+internal class OnStorageProviderCondition :
+    AbstractProviderCondition<StorageProvider, ConditionalOnStorageProvider>() {
 
-internal class OnStorageProviderCondition : SpringBootCondition(), ConfigurationCondition {
-
-    override fun getConfigurationPhase() = ConfigurationPhase.REGISTER_BEAN
-
-    override fun getMatchOutcome(context: ConditionContext, metadata: AnnotatedTypeMetadata): ConditionOutcome {
-        val attributes = checkNotNull(metadata.getAnnotationAttributes(ConditionalOnStorageProvider::class.java.name))
-        val requiredProvider = attributes["value"] as StorageProvider
-
-        val message = ConditionMessage.forCondition(ConditionalOnStorageProvider::class.java, requiredProvider)
-        val configuredProvider = Binder.get(context.environment)
-            .bind(STORAGE_PROVIDER_PROPERTY, StorageProvider::class.java)
-            .orElse(null)
-
-        return when {
-            configuredProvider != null -> {
-                val reason = message.because("$STORAGE_PROVIDER_PROPERTY is $configuredProvider")
-                if (configuredProvider == requiredProvider) ConditionOutcome.match(reason)
-                else ConditionOutcome.noMatch(reason)
-            }
-
-            hasFileStorageServiceBean(context) -> {
-                ConditionOutcome.noMatch(message.because("$STORAGE_PROVIDER_PROPERTY is not set, using own bean"))
-            }
-
-            else -> {
-                val oneOf = StorageProvider.entries.joinToString(", ") { it.name }
-                val message =
-                    "The $STORAGE_PROVIDER_PROPERTY is required, one of: $oneOf; or declare a FileStorageService bean"
-                throw InvalidConfigurationPropertyValueException(STORAGE_PROVIDER_PROPERTY, null, message)
-            }
-        }
-    }
-
-    /** Whether a [FileStorageService] bean is declared, without initializing any bean */
-    private fun hasFileStorageServiceBean(context: ConditionContext): Boolean = context.beanFactory
-        ?.getBeanNamesForType<FileStorageService>(includeNonSingletons = true, allowEagerInit = false)
-        ?.isNotEmpty()
-        ?: false
+    override val providerProperty = "kiwi.storage.provider"
+    override val providerClass = StorageProvider::class
+    override val annotationClass = ConditionalOnStorageProvider::class
+    override val annotationProperty = ConditionalOnStorageProvider::value
+    override val providedBeanClass = FileStorageService::class
 }

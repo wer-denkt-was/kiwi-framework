@@ -15,16 +15,17 @@ import de.kiwi.storage.domain.FileEntity
 import de.kiwi.storage.domain.SignedFileUriProvider
 import de.kiwi.storage.infrastructure.DataUriFileStorageService
 import de.kiwi.storage.infrastructure.NullFileStorageService
-import de.kiwi.storage.infrastructure.s3.clientEndpointUrl
 import de.kiwi.storage.infrastructure.local.HmacLocalFileTokenService
 import de.kiwi.storage.infrastructure.local.LocalFileStorageService
 import de.kiwi.storage.infrastructure.local.LocalFileTokenService
 import de.kiwi.storage.infrastructure.s3.S3FileStorageService
+import de.kiwi.storage.infrastructure.s3.clientEndpointUrl
 import de.kiwi.storage.web.LocalFileController
 import jakarta.servlet.ServletContext
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -34,7 +35,6 @@ import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories
-import java.time.Clock
 import java.util.*
 
 /**
@@ -48,6 +48,7 @@ import java.util.*
     afterName = ["de.kiwi.framework.KiwiFrameworkAutoConfiguration"],
     after = [HibernateJpaAutoConfiguration::class, DataJpaRepositoriesAutoConfiguration::class],
 )
+@ConditionalOnBooleanProperty("kiwi.storage.enabled", matchIfMissing = true)
 @EnableConfigurationProperties(KiwiStorageProperties::class)
 class KiwiStorageAutoConfiguration(
     private val props: KiwiStorageProperties,
@@ -85,7 +86,7 @@ class KiwiStorageAutoConfiguration(
             val secretKey = props.local.token.secretKey
             check(secretKey.isNotEmpty()) { "Missing kiwi.storage.local.token.secret-key" }
 
-            val clockProvider = clockProviderProvider.getIfAvailable { ClockProvider { Clock.systemUTC() } }
+            val clockProvider = clockProviderProvider.getIfAvailable { ClockProvider.SystemUTC }
             return HmacLocalFileTokenService(
                 secretKey = Base64.getDecoder().decode(secretKey),
                 clockProvider = clockProvider,
@@ -95,13 +96,15 @@ class KiwiStorageAutoConfiguration(
         @Bean
         @ConditionalOnMissingBean
         @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-        fun localFileController(localFileStorageService: LocalFileStorageService) =
-            LocalFileController(localFileStorageService)
+        fun localFileController(localFileStorageService: LocalFileStorageService): LocalFileController {
+            return LocalFileController(localFileStorageService)
+        }
     }
 
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnStorageProvider(StorageProvider.S3)
     internal class S3FileStorageConfiguration(private val props: KiwiStorageProperties) {
+
         @Bean
         @ConditionalOnMissingBean
         fun s3FileStorageService(context: ApplicationContext): FileStorageService {
@@ -152,13 +155,18 @@ class KiwiStorageAutoConfiguration(
         fileRepository: FileEntityRepository,
         storageService: FileStorageService,
         clockProvider: ClockProvider,
-    ) = FileEntityService(fileRepository, storageService, clockProvider)
+    ) = FileEntityService(
+        fileRepository = fileRepository,
+        storageService = storageService,
+        clockProvider = clockProvider,
+    )
 
     @Bean
     @ConditionalOnBean(FileStorageService::class)
-    fun whenFileDeletedThenRemoveFromStorage(fileStorageService: FileStorageService) =
-        WhenFileDeletedThenRemoveFromStorage(
-            enabled = props.entity.onDeleteRemoveFromStorage,
-            fileStorageService = fileStorageService,
-        )
+    fun whenFileDeletedThenRemoveFromStorage(
+        fileStorageService: FileStorageService,
+    ) = WhenFileDeletedThenRemoveFromStorage(
+        enabled = props.entity.onDeleteRemoveFromStorage,
+        fileStorageService = fileStorageService,
+    )
 }
