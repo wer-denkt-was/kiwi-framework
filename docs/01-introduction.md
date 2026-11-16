@@ -50,16 +50,16 @@ in [Appendix: "Kiwi-Server Framework Stack"](./99-appendix.md#kiwi-server-framew
 
 Kiwi-Server 1.5 is built on the following baseline. Your application should use the same major versions:
 
-| Component              | Version                                                           |
-|------------------------|-------------------------------------------------------------------|
-| Java                   | 21 or above                                                       |
-| Kotlin                 | 2.3                                                               |
-| Spring Boot            | 4.1 (Spring Framework 7, Spring Security 7, Spring Data 2026.0)   |
-| Hibernate ORM          | 7 (Jakarta Persistence 3.2), provided by Spring Boot              |
-| Jackson                | 3 (packages `tools.jackson.*`), provided by Spring Boot           |
-| Liquibase              | Provided by `spring-boot-starter-liquibase`                       |
-| Database               | MySQL, MariaDB or PostgreSQL (supported by the Kiwi changelogs)   |
-| Build tool (suggested) | Gradle with Kotlin DSL, using KAPT for annotation processing      |
+| Component              | Version                                                         |
+|------------------------|-----------------------------------------------------------------|
+| Java                   | 21 or above                                                     |
+| Kotlin                 | 2.3                                                             |
+| Spring Boot            | 4.1 (Spring Framework 7, Spring Security 7, Spring Data 2026.0) |
+| Hibernate ORM          | 7 (Jakarta Persistence 3.2), provided by Spring Boot            |
+| Jackson                | 3 (packages `tools.jackson.*`), provided by Spring Boot         |
+| Liquibase              | Provided by `spring-boot-starter-liquibase`                     |
+| Database               | MySQL, MariaDB or PostgreSQL (supported by the Kiwi changelogs) |
+| Build tool (suggested) | Gradle with Kotlin DSL, using KAPT for annotation processing    |
 
 All Kiwi artifacts publish the Spring Boot BOM as a platform dependency, so the versions of Spring and its managed
 libraries are aligned with the Spring Boot version Kiwi was built with.
@@ -87,8 +87,7 @@ for details.
 - `de.kiwi-framework:kiwi-framework` The Kiwi Framework module (package `de.kiwi.framework`) implements the API module
   and provides most of the core functionality. It auto-configures:
     - the query-schema service, generic entity commands and queries, analytical reports, fieldset validation, the
-      user descriptor provider, the transaction service and the application clock
-      (`KiwiFrameworkAutoConfiguration`),
+      user descriptor provider, the transaction service and the application clock (`KiwiFrameworkAutoConfiguration`),
     - the command-, query- and event-bus, including the registration of handler and subscriber beans
       (`KiwiBusAutoConfiguration`),
     - the e-mail sender service with its Mustache template renderer (`KiwiMailAutoConfiguration`),
@@ -96,24 +95,25 @@ for details.
       pagination (`KiwiWebAutoConfiguration`, can be disabled with `kiwi.web.enabled=false`),
     - OpenAPI documentation of the Kiwi endpoints, if SpringDoc is on the classpath (`KiwiOpenApiAutoConfiguration`,
       can be disabled with `kiwi.web.open-api.enabled=false`),
-    - optional HTTP Basic security for the actuator management endpoints
-      (`KiwiManagementSecurityAutoConfiguration`, enabled with `kiwi.web.management-security.enabled=true`).
+    - optional HTTP Basic security for the actuator management endpoints (`KiwiManagementSecurityAutoConfiguration`,
+      enabled with `kiwi.web.management-security.enabled=true`).
 
   This module should be included in the main application module, but does not need to be included in every
   application module.
 - `de.kiwi-framework:kiwi-storage` The Kiwi Storage module provides a file entity, a database schema, and
   implementations of the API module `FileStorageService` interface. It auto-configures the file entity and its
   repository, and the storage provider selected by the property `kiwi.storage.provider`: `none`, `data-uri`, `s3`, or
-  `local`. The property is required, unless the application declares its own `FileStorageService` bean. With the `local` provider, it also serves the stored files using signed URIs
+  `local`. The property is required, unless the application declares its own `FileStorageService` bean. With the `local`
+  provider, it also serves the stored files using signed URIs
   (see [Chapter 5: "File Storage"](./05-infrastructure-integration.md#file-storage)).
 - `de.kiwi-framework:kiwi-audit-log` The Kiwi Audit-Log module (package `de.kiwi.auditlog`) provides an
   audit-log-entry entity, a database schema, and an implementation of the API module `AuditLoggerService` interface,
   which stores domain events and domain exceptions in the database. It is enabled by default and can be disabled with
   `kiwi.audit-log.enabled=false` (see [Chapter 5: "Audit Log"](./05-infrastructure-integration.md#audit-log)).
 - `de.kiwi-framework:kiwi-background-tasks` The Kiwi Background-Tasks module (package `de.kiwi.backgroundTask`)
-  runs long-running work as background tasks on workers, possibly on other application instances: It provides the
-  API module `BackgroundTaskService`, a task entity and database schema, a local and a RabbitMQ task queue, task
-  workers, and a management endpoint for monitoring and resuming tasks
+  runs long-running work as background tasks on workers, possibly on other application instances: It provides an
+  implementation of the `BackgroundTaskService` API, a task entity and database schema, a local and a RabbitMQ task
+  queue, task workers, and a management endpoint for monitoring and resuming tasks
   (see [Chapter 10: "Background Tasks"](./10-background-tasks.md)).
 - `de.kiwi-framework:kiwi-mjml` The Kiwi MJML module (package `de.kiwi.mjml`) is a plug-in that extends the e-mail
   template rendering of Kiwi, allowing it to render [MJML Templates](https://mjml.io/) into HTML e-mail content.
@@ -136,8 +136,7 @@ As such, applications built with Kiwi Server should adhere to the following stru
 
 - Each application module contains a base package, named after the module's group-id
 - The base package contains a `domain` package, containing the application core: entities, entity schemas and
-  fieldsets, commands, queries, and events
-  (see [Chapter 2: "Domain Entities and Schema"](./02-domain-schema.md))
+  fieldsets, commands, queries, and events (see [Chapter 2: "Domain Entities and Schema"](./02-domain-schema.md))
 - The base package contains an `application` package, containing the application handlers, use-case logic, service- and
   repository-interfaces (see [Chapter 3: "Application Commands, Queries and Events"](./03-application-command-query.md))
 - The base package contains an `infrastructure` package, containing the application infrastructure, configuration
@@ -256,7 +255,7 @@ repositories {
 
 dependencies {
     // (3) Choose a Kiwi Server version; this can also be a property in gradle.properties
-    val kiwiVersion = "1.5.0"
+    val kiwiVersion = "1.5.1"
 
     // (4) Add Kiwi artifacts as dependencies
     // API Module: Required in *every* application module, provides the Kiwi interfaces
@@ -479,8 +478,8 @@ running, with a message confirming:
 > Started ExampleApplicationKt in (...) seconds
 
 If you now navigate to http://localhost:8080/, Spring Security asks you to log in: without further security
-configuration, Spring Boot creates a single user named `user`, and logs its generated password on startup
-("Using generated security password: ..."). After logging in, you'll see a whitelabel error page with status
+configuration, Spring Boot creates a single user named `user`, and logs its generated password on startup ("Using
+generated security password: ..."). After logging in, you'll see a whitelabel error page with status
 `type=Not Found, status=404`. This means your application is running, but has no controller mappings yet.
 
 To check if tests are working correctly, run the following command within the project root directory:

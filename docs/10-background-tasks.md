@@ -146,6 +146,12 @@ Jackson, as it is stored with the task and sent to the worker executing it. Like
 `data class`es carrying serializable IDs and parameters, not managed JPA entities:
 
 ```kotlin
+// Declared in example domain-layer
+package com.example.domain
+
+import de.kiwi.api.backgroundTask.BackgroundTaskRequest
+// [...] other imports
+
 /** Export the items of a todo list as a CSV file */
 data class ExportTodoList(
     val todoListId: TodoListId,
@@ -160,6 +166,12 @@ queue a task is enqueued in, and thereby the workers that may execute it, e.g. t
 workers:
 
 ```kotlin
+// Declared in example domain-layer
+package com.example.domain
+
+import de.kiwi.api.backgroundTask.BackgroundTaskRequest
+// [...] other imports
+
 /** Recalculate statistics for a given year */
 data class RecalculateStatistics(
     val year: Int,
@@ -175,6 +187,13 @@ Handlers are Spring beans, resolved by request type like command handlers.
 Exactly one handler must exist per request type:
 
 ```kotlin
+// Declared in example application-layer
+package com.example.application
+
+import com.example.domain.ExportTodoList
+import de.kiwi.api.backgroundTask.BackgroundTaskHandler
+// [...] other imports
+
 @Component
 class ExportTodoListHandler(
     private val transactions: TransactionService,
@@ -595,7 +614,7 @@ transaction that stores its result checkpoint. The events of a completed stage a
 the task is resumed later. The events of a stage that fails are discarded. The `DomainResult` returned by `stages`
 contains no events, as they have been published already.
 
-> **Don't record events per item in `forEachItem` or `mapEachItem`.** Each item writes ites checkpoint when it has been
+> **Don't record events per item in `forEachItem` or `mapEachItem`.** Each item writes its checkpoint when it has been
 > processed, but the events recorded for it are only published when the whole stage completes. If the stage fails
 > after some items, their events are discarded, while the items are skipped when the task is resumed: Their events are
 > **never** published. Record events once per stage instead (e.g. a summary event after the iteration, as
@@ -1238,7 +1257,7 @@ class ExportTodoListIntegrationTest {
     private lateinit var backgroundTaskService: BackgroundTaskService
 
     @Autowired
-    private lateinit var messaging: RecordingBackgroundTaskMessaging
+    private lateinit var messaging: TestBackgroundTaskMessaging
 
     private val alice = dummyUser("Alice Doe")
 

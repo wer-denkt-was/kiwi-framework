@@ -811,7 +811,10 @@ private fun rabbitQueueArguments(category: TaskCategoryProps, rabbitConfig: Rabb
     }
 }
 
-/** Safely [stop] the container, catching Exceptions that may be thrown and issue a log warning instead */
+/**
+ * Safely [DirectMessageListenerContainer.stop] the container,
+ * catching Exceptions that may be thrown and issue a log warning instead
+ */
 private fun DirectMessageListenerContainer.safeStop() {
     try {
         stop()
